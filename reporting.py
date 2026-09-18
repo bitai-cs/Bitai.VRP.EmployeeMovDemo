@@ -1,0 +1,644 @@
+import csv
+import os
+from math import sqrt
+from pathlib import Path
+from typing import Any
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+from config import Settings
+from scenario import Scenario
+from solver import SolveResult
+
+
+def ensure_output_dir(path: str) -> None:
+    Path(path).mkdir(parents=True, exist_ok=True)
+
+
+def _leg_linestyle(settings: Settings, count_cost: bool, count_time: bool) -> str:
+    if count_cost and count_time:
+        return settings.plot_leg_both_counted_line_style
+    if count_cost != count_time:
+        return settings.plot_leg_mixed_counted_line_style
+    return settings.plot_leg_not_counted_line_style
+
+
+def _percentile(values: list[float], percentile: float) -> float:
+    if not values:
+        return 0.0
+    sorted_values = sorted(values)
+    if len(sorted_values) == 1:
+        return sorted_values[0]
+    rank = (len(sorted_values) - 1) * percentile
+    lower_index = int(rank)
+    upper_index = min(lower_index + 1, len(sorted_values) - 1)
+    weight = rank - lower_index
+    return sorted_values[lower_index] + (sorted_values[upper_index] - sorted_values[lower_index]) * weight
+
+
+def _mean(values: list[float]) -> float:
+    return (sum(values) / len(values)) if values else 0.0
+
+
+def _stddev_population(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    mean_value = _mean(values)
+    variance = sum((value - mean_value) ** 2 for value in values) / len(values)
+    return sqrt(variance)
+
+
+def _coefficient_of_variation(values: list[float]) -> float:
+    mean_value = _mean(values)
+    if mean_value == 0:
+        return 0.0
+    return _stddev_population(values) / mean_value
+
+
+def _write_aggregate_rows(writer: Any, label: str, values: list[float], decimals: int = 3) -> None:
+    writer.writerow([f"{label}_avg", f"{_mean(values):.{decimals}f}"])
+    writer.writerow([f"{label}_p95", f"{_percentile(values, 0.95):.{decimals}f}"])
+    writer.writerow([f"{label}_min", f"{(min(values) if values else 0.0):.{decimals}f}"])
+    writer.writerow([f"{label}_max", f"{(max(values) if values else 0.0):.{decimals}f}"])
+
+
+def _semaphore_high_is_good(value: float, green_min: float, amber_min: float) -> str:
+    if value >= green_min:
+        return "GREEN"
+    if value >= amber_min:
+        return "AMBER"
+    return "RED"
+
+
+def _semaphore_low_is_good(value: float, green_max: float, amber_max: float) -> str:
+    if value <= green_max:
+        return "GREEN"
+    if value <= amber_max:
+        return "AMBER"
+    return "RED"
+
+
+def _semaphore_mid_band_is_good(value: float, green_min: float, green_max: float, amber_min: float, amber_max: float) -> str:
+    if green_min <= value <= green_max:
+        return "GREEN"
+    if amber_min <= value <= amber_max:
+        return "AMBER"
+    return "RED"
+
+
+def plot_scenario(settings: Settings, scenario: Scenario) -> None:
+    ensure_output_dir(settings.output_dir)
+    file_path = os.path.join(settings.output_dir, settings.scenario_plot_filename)
+    plt.figure(figsize=settings.plot_figsize)
+    plt.scatter(
+        [scenario.coord_by_node[n][0] for n in scenario.employee_nodes],
+        [scenario.coord_by_node[n][1] for n in scenario.employee_nodes],
+        marker=settings.plot_employee_marker,
+        s=settings.plot_employee_size,
+        c=settings.plot_employee_color,
+        alpha=settings.plot_employee_alpha,
+        label=settings.plot_employee_label,
+    )
+    plt.scatter(
+        [scenario.coord_by_node[n][0] for n in range(scenario.number_of_initial_route_coords)],
+        [scenario.coord_by_node[n][1] for n in range(scenario.number_of_initial_route_coords)],
+        marker=settings.plot_initial_marker,
+        s=settings.plot_initial_size,
+        c=settings.plot_initial_color,
+        label=settings.plot_initial_label,
+    )
+    plt.scatter(
+        [scenario.coord_by_node[n][0] for n in range(scenario.number_of_initial_route_coords, scenario.number_of_initial_route_coords + scenario.number_of_final_route_coords)],
+        [scenario.coord_by_node[n][1] for n in range(scenario.number_of_initial_route_coords, scenario.number_of_initial_route_coords + scenario.number_of_final_route_coords)],
+        marker=settings.plot_final_marker,
+        s=settings.plot_final_size,
+        c=settings.plot_final_color,
+        label=settings.plot_final_label,
+    )
+    for node, label in scenario.label_by_node.items():
+        x, y = scenario.coord_by_node[node]
+        if node < scenario.employee_node_offset:
+            plt.annotate(label, (x, y), xytext=settings.plot_node_label_offset, textcoords="offset points")
+        else:
+            plt.annotate(
+                label,
+                (x, y),
+                xytext=settings.plot_employee_id_label_offset,
+                textcoords="offset points",
+                fontsize=settings.plot_small_label_fontsize,
+                color=settings.plot_employee_id_label_color,
+            )
+    plt.title("VRP demo")
+    plt.xlabel(settings.plot_x_label)
+    plt.ylabel(settings.plot_y_label)
+    plt.grid(True, linestyle=settings.plot_grid_line_style, alpha=settings.plot_grid_alpha)
+    plt.xlim(settings.area_min_x, settings.area_max_x)
+    plt.ylim(settings.area_min_y, settings.area_max_y)
+    plt.gca().set_aspect("equal", adjustable="box")
+    plt.legend(loc=settings.plot_legend_loc, bbox_to_anchor=settings.plot_legend_bbox_to_anchor, borderaxespad=settings.plot_legend_border_axes_pad)
+    plt.tight_layout()
+    plt.savefig(file_path, dpi=settings.plot_dpi, bbox_inches=settings.plot_savefig_bbox)
+    plt.close()
+    print(f"Escenario guardado en: {file_path}")
+
+
+def plot_vehicle_route(settings: Settings, scenario: Scenario, vehicle_id: int, route_nodes: list[int], dropped_employees: list[int]) -> None:
+    ensure_output_dir(settings.output_dir)
+    file_name = settings.route_plot_filename_template.format(vehiculo=vehicle_id)
+    file_path = os.path.join(settings.output_dir, file_name)
+    plt.figure(figsize=settings.plot_figsize)
+    plt.scatter(
+        [scenario.coord_by_node[n][0] for n in scenario.employee_nodes],
+        [scenario.coord_by_node[n][1] for n in scenario.employee_nodes],
+        marker=settings.plot_employee_marker,
+        s=settings.plot_employee_size,
+        c=settings.plot_employee_color,
+        alpha=settings.plot_employee_alpha,
+        label=settings.plot_employee_label,
+    )
+    if dropped_employees:
+        plt.scatter(
+            [scenario.coord_by_node[n][0] for n in dropped_employees],
+            [scenario.coord_by_node[n][1] for n in dropped_employees],
+            marker=settings.plot_dropped_employee_marker,
+            s=settings.plot_dropped_employee_size,
+            c=settings.plot_dropped_employee_color,
+            alpha=settings.plot_employee_alpha,
+            label=settings.plot_dropped_employee_label,
+        )
+    rx = [scenario.coord_by_node[n][0] for n in route_nodes]
+    ry = [scenario.coord_by_node[n][1] for n in route_nodes]
+    if len(route_nodes) <= 2:
+        plt.plot(rx, ry, color=settings.plot_route_color, linewidth=settings.plot_route_line_width, linestyle=settings.plot_empty_route_line_style)
+        plt.plot([], [], color=settings.plot_route_color, linewidth=settings.plot_route_line_width, linestyle=settings.plot_empty_route_line_style, label=settings.plot_empty_route_label)
+    else:
+        for idx in range(len(route_nodes) - 1):
+            if idx == 0:
+                linestyle = _leg_linestyle(settings, settings.count_first_leg_cost[vehicle_id], settings.count_first_leg_time[vehicle_id])
+            elif idx == len(route_nodes) - 2:
+                linestyle = _leg_linestyle(settings, settings.count_last_leg_cost[vehicle_id], settings.count_last_leg_time[vehicle_id])
+            else:
+                linestyle = "solid"
+            plt.plot(rx[idx:idx + 2], ry[idx:idx + 2], color=settings.plot_route_color, linewidth=settings.plot_route_line_width, linestyle=linestyle)
+        plt.plot([], [], color=settings.plot_route_color, linewidth=settings.plot_route_line_width, linestyle="solid", label=f"Ruta vehiculo {vehicle_id}")
+    plt.scatter(rx, ry, c=settings.plot_route_color, s=settings.plot_route_point_size)
+    for order, node in enumerate(route_nodes):
+        x, y = scenario.coord_by_node[node]
+        plt.annotate(str(order), (x, y), xytext=settings.plot_visit_order_label_offset, textcoords="offset points", fontsize=settings.plot_small_label_fontsize)
+        if node >= scenario.employee_node_offset:
+            plt.annotate(
+                scenario.label_by_node[node],
+                (x, y),
+                xytext=settings.plot_employee_id_label_offset,
+                textcoords="offset points",
+                fontsize=settings.plot_small_label_fontsize,
+                color=settings.plot_employee_id_label_color,
+            )
+    plt.title(f"Ruta del vehiculo {vehicle_id}")
+    plt.xlabel(settings.plot_x_label)
+    plt.ylabel(settings.plot_y_label)
+    plt.grid(True, linestyle=settings.plot_grid_line_style, alpha=settings.plot_grid_alpha)
+    plt.xlim(settings.area_min_x, settings.area_max_x)
+    plt.ylim(settings.area_min_y, settings.area_max_y)
+    plt.gca().set_aspect("equal", adjustable="box")
+    plt.legend(loc=settings.plot_legend_loc, bbox_to_anchor=settings.plot_legend_bbox_to_anchor, borderaxespad=settings.plot_legend_border_axes_pad)
+    plt.tight_layout()
+    plt.savefig(file_path, dpi=settings.plot_dpi, bbox_inches=settings.plot_savefig_bbox)
+    plt.close()
+    print(f"Ruta guardada en: {file_path}")
+
+
+def write_route_details_csv(settings: Settings, solve_result: SolveResult) -> None:
+    ensure_output_dir(settings.output_dir)
+    csv_path = os.path.join(settings.output_dir, settings.route_details_csv_filename)
+    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow([
+            "vehicle_id",
+            "origen",
+            "destino",
+            "empleados_atendidos",
+            "capacidad_vehiculo",
+            "utilizacion_demanda_pct",
+            "hora_salida",
+            "hora_llegada",
+            "hora_limite",
+            "start_delay_window_min",
+            "end_buffer_limit_min",
+            "duracion_modelada_min",
+            "drive_time_min",
+            "wait_time_min",
+            "service_time_min",
+            "productive_time_min",
+            "idle_ratio_pct",
+            "drive_time_pct",
+            "service_time_pct",
+            "wait_time_pct",
+            "distancia_contabilizada_km",
+            "distancia_fisica_km",
+            "distance_efficiency_ratio",
+            "distancia_no_contabilizada_km",
+            "route_objective_contribution",
+            "total_stops",
+            "total_service_stops",
+            "is_empty_route",
+            "first_service_arrival",
+            "last_service_arrival",
+            "priority_low_served",
+            "priority_medium_served",
+            "priority_high_served",
+            "lag_min",
+            "ruta",
+        ])
+        for route in solve_result.solved_routes:
+            writer.writerow([
+                route.vehicle_id,
+                route.start_node_label,
+                route.end_node_label,
+                route.covered_demand,
+                route.maximum_demand_coverage,
+                f"{route.demand_utilization_pct:.2f}",
+                route.departure_time,
+                route.arrival_time,
+                route.arrival_time_limit,
+                route.start_delay_from_window_min,
+                route.end_buffer_to_limit_min,
+                route.modeled_route_duration,
+                route.total_drive_time_min,
+                route.total_wait_time_min,
+                route.total_service_time_min,
+                route.productive_time_min,
+                f"{route.idle_ratio_pct:.2f}",
+                f"{route.drive_time_pct:.2f}",
+                f"{route.service_time_pct:.2f}",
+                f"{route.wait_time_pct:.2f}",
+                f"{route.modeled_route_distance:.3f}",
+                f"{route.physical_route_distance:.3f}",
+                f"{route.distance_efficiency_ratio:.6f}",
+                f"{route.uncosted_distance_km:.3f}",
+                route.route_objective_contribution,
+                route.total_stops,
+                route.total_service_stops,
+                route.is_empty_route,
+                route.first_service_arrival,
+                route.last_service_arrival,
+                route.priority_low_served,
+                route.priority_medium_served,
+                route.priority_high_served,
+                route.service_time,
+                " -> ".join(f"{stop.node_id}({stop.arrival_time})" for stop in route.stops),
+            ])
+    print(f"Detalle de rutas guardado en: {csv_path}")
+
+
+def write_stop_details_csv(settings: Settings, solve_result: SolveResult) -> None:
+    ensure_output_dir(settings.output_dir)
+    csv_path = os.path.join(settings.output_dir, settings.route_stop_details_csv_filename)
+    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow([
+            "vehicle_id",
+            "route_start_label",
+            "route_end_label",
+            "stop_sequence",
+            "stop_type",
+            "node_id",
+            "node_label",
+            "arrival_minutes",
+            "arrival_time",
+            "duration_from_previous_arrival_minutes",
+            "cumulative_duration_from_previous_arrival_minutes",
+            "departure_minutes",
+            "departure_time",
+            "service_minutes",
+            "wait_minutes",
+            "cumulative_wait_minutes",
+            "load_before",
+            "load_delta",
+            "load_after",
+            "leg_distance_km_from_prev",
+            "leg_travel_minutes_from_prev",
+            "cumulative_distance_km",
+        ])
+        for route in solve_result.solved_routes:
+            previous_arrival_minutes: int | None = None
+            cumulative_duration_from_previous_arrival_minutes = 0
+            for stop in route.stops:
+                if previous_arrival_minutes is None:
+                    duration_from_previous_arrival_minutes = 0
+                else:
+                    duration_from_previous_arrival_minutes = stop.arrival_minutes - previous_arrival_minutes
+                cumulative_duration_from_previous_arrival_minutes += duration_from_previous_arrival_minutes
+                previous_arrival_minutes = stop.arrival_minutes
+
+                writer.writerow([
+                    route.vehicle_id,
+                    route.start_node_label,
+                    route.end_node_label,
+                    stop.stop_sequence,
+                    stop.stop_type,
+                    stop.node_id,
+                    stop.node_label,
+                    stop.arrival_minutes,
+                    stop.arrival_time,
+                    duration_from_previous_arrival_minutes,
+                    cumulative_duration_from_previous_arrival_minutes,
+                    stop.departure_minutes,
+                    stop.departure_time,
+                    stop.service_minutes,
+                    stop.wait_minutes,
+                    stop.cumulative_wait_minutes,
+                    stop.load_before,
+                    stop.load_delta,
+                    stop.load_after,
+                    f"{stop.leg_distance_km_from_prev:.3f}",
+                    stop.leg_travel_minutes_from_prev,
+                    f"{stop.cumulative_distance_km:.3f}",
+                ])
+    print(f"Detalle de paradas guardado en: {csv_path}")
+
+
+def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, scenario: Scenario) -> None:
+    ensure_output_dir(settings.output_dir)
+    csv_path = os.path.join(settings.output_dir, settings.solution_summary_csv_filename)
+    routes = solve_result.solved_routes
+    modeled_route_duration_values = [float(route.modeled_route_duration) for route in routes]
+    total_drive_time_values = [float(route.total_drive_time_min) for route in routes]
+    total_wait_time_values = [float(route.total_wait_time_min) for route in routes]
+    total_service_time_values = [float(route.total_service_time_min) for route in routes]
+    productive_time_values = [float(route.productive_time_min) for route in routes]
+    demand_utilization_values = [route.demand_utilization_pct for route in routes]
+    distance_efficiency_values = [route.distance_efficiency_ratio for route in routes]
+    total_service_stops_values = [float(route.total_service_stops) for route in routes]
+    route_objective_contribution_values = [float(route.route_objective_contribution) for route in routes]
+
+    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["campo", "valor"])
+        writer.writerow(["estado", solve_result.status])
+        writer.writerow(["valor_objetivo_total", solve_result.total_objective_value])
+        writer.writerow(["tiempo_busqueda_ms", solve_result.search_wall_time_ms])
+        writer.writerow(["empleados_totales", settings.number_of_employees])
+        writer.writerow(["empleados_atendidos_total", solve_result.total_covered_service_points])
+        writer.writerow(["empleados_omitidos_total", len(solve_result.omitted_service_points)])
+        writer.writerow(["service_level_pct", f"{solve_result.service_level_pct:.2f}"])
+        writer.writerow(["weighted_service_level_pct", f"{solve_result.weighted_service_level_pct:.2f}"])
+        writer.writerow(["served_priority_weight", solve_result.served_priority_weight])
+        writer.writerow(["total_priority_weight", solve_result.total_priority_weight])
+        writer.writerow(["distancia_contabilizada_total_km", f"{solve_result.total_modeled_route_distance:.3f}"])
+        writer.writerow(["distancia_fisica_total_km", f"{solve_result.total_physical_route_distance:.3f}"])
+        writer.writerow(["deadhead_distance_km", f"{solve_result.deadhead_distance_km:.3f}"])
+        writer.writerow(["lag_total_min", solve_result.total_modeled_route_lag])
+        writer.writerow(["total_drive_min", solve_result.total_drive_min])
+        writer.writerow(["total_wait_min", solve_result.total_wait_min])
+        writer.writerow(["total_service_min", solve_result.total_service_min])
+        writer.writerow(["average_stop_wait_min", f"{solve_result.average_stop_wait_min:.3f}"])
+        writer.writerow(["p95_stop_wait_min", f"{solve_result.p95_stop_wait_min:.3f}"])
+        writer.writerow(["km_per_served_employee", f"{solve_result.km_per_served_employee:.3f}"])
+        writer.writerow(["min_per_served_employee", f"{solve_result.min_per_served_employee:.3f}"])
+        writer.writerow(["fleet_utilization_pct", f"{solve_result.fleet_utilization_pct:.2f}"])
+        writer.writerow(["workload_balance_demand_std", f"{solve_result.workload_balance_demand_std:.6f}"])
+        writer.writerow(["workload_balance_distance_std", f"{solve_result.workload_balance_distance_std:.6f}"])
+        writer.writerow(["workload_balance_duration_std", f"{solve_result.workload_balance_duration_std:.6f}"])
+        writer.writerow(["max_route_duration_min", solve_result.max_route_duration_min])
+        writer.writerow(["min_route_duration_min", solve_result.min_route_duration_min])
+        writer.writerow(["spread_route_duration_min", solve_result.spread_route_duration_min])
+        writer.writerow(["co2_kg_per_km", f"{solve_result.co2_kg_per_km:.6f}"])
+        writer.writerow(["estimated_co2_kg", f"{solve_result.estimated_co2_kg:.3f}"])
+        writer.writerow(["omitted_low_priority_count", solve_result.omitted_low_priority_count])
+        writer.writerow(["omitted_medium_priority_count", solve_result.omitted_medium_priority_count])
+        writer.writerow(["omitted_high_priority_count", solve_result.omitted_high_priority_count])
+        writer.writerow(["omitted_penalty_low", solve_result.omitted_penalty_low])
+        writer.writerow(["omitted_penalty_medium", solve_result.omitted_penalty_medium])
+        writer.writerow(["omitted_penalty_high", solve_result.omitted_penalty_high])
+        writer.writerow(["omitted_penalty_total", solve_result.omitted_penalty_total])
+        writer.writerow(["objective_travel_cost", solve_result.objective_travel_cost])
+        writer.writerow(["objective_omission_penalty", solve_result.objective_omission_penalty])
+        writer.writerow(["objective_unattributed_cost", solve_result.objective_unattributed_cost])
+        writer.writerow(["solver_status_detail", solve_result.solver_status_detail])
+        writer.writerow(["solver_branches", solve_result.solver_branches])
+        writer.writerow(["solver_failures", solve_result.solver_failures])
+        writer.writerow([])
+        writer.writerow(["agregados_flotilla_por_ruta"])
+        _write_aggregate_rows(writer, "duracion_modelada_min", modeled_route_duration_values, decimals=2)
+        _write_aggregate_rows(writer, "drive_time_min", total_drive_time_values, decimals=2)
+        _write_aggregate_rows(writer, "wait_time_min", total_wait_time_values, decimals=2)
+        _write_aggregate_rows(writer, "service_time_min", total_service_time_values, decimals=2)
+        _write_aggregate_rows(writer, "productive_time_min", productive_time_values, decimals=2)
+        _write_aggregate_rows(writer, "demand_utilization_pct", demand_utilization_values, decimals=2)
+        _write_aggregate_rows(writer, "distance_efficiency_ratio", distance_efficiency_values, decimals=6)
+        _write_aggregate_rows(writer, "total_service_stops", total_service_stops_values, decimals=2)
+        _write_aggregate_rows(writer, "route_objective_contribution", route_objective_contribution_values, decimals=2)
+        writer.writerow([])
+        writer.writerow(["kpi_semaforos"])
+        writer.writerow(["kpi", "value", "status", "rule"])
+        writer.writerow([
+            "service_level_pct",
+            f"{solve_result.service_level_pct:.2f}",
+            _semaphore_high_is_good(solve_result.service_level_pct, green_min=98.0, amber_min=90.0),
+            "GREEN >= 98; AMBER >= 90; RED < 90",
+        ])
+        writer.writerow([
+            "weighted_service_level_pct",
+            f"{solve_result.weighted_service_level_pct:.2f}",
+            _semaphore_high_is_good(solve_result.weighted_service_level_pct, green_min=99.0, amber_min=95.0),
+            "GREEN >= 99; AMBER >= 95; RED < 95",
+        ])
+        writer.writerow([
+            "fleet_utilization_pct",
+            f"{solve_result.fleet_utilization_pct:.2f}",
+            _semaphore_mid_band_is_good(solve_result.fleet_utilization_pct, green_min=60.0, green_max=90.0, amber_min=40.0, amber_max=100.0),
+            "GREEN in [60, 90]; AMBER in [40, 100]; RED outside [40, 100]",
+        ])
+        writer.writerow([
+            "workload_balance_duration_std",
+            f"{solve_result.workload_balance_duration_std:.3f}",
+            _semaphore_low_is_good(solve_result.workload_balance_duration_std, green_max=12.0, amber_max=25.0),
+            "GREEN <= 12 min; AMBER <= 25 min; RED > 25 min",
+        ])
+        writer.writerow([
+            "average_stop_wait_min",
+            f"{solve_result.average_stop_wait_min:.3f}",
+            _semaphore_low_is_good(solve_result.average_stop_wait_min, green_max=5.0, amber_max=15.0),
+            "GREEN <= 5 min; AMBER <= 15 min; RED > 15 min",
+        ])
+        writer.writerow([
+            "km_per_served_employee",
+            f"{solve_result.km_per_served_employee:.3f}",
+            _semaphore_low_is_good(solve_result.km_per_served_employee, green_max=20.0, amber_max=30.0),
+            "GREEN <= 20 km; AMBER <= 30 km; RED > 30 km",
+        ])
+        writer.writerow([
+            "min_per_served_employee",
+            f"{solve_result.min_per_served_employee:.3f}",
+            _semaphore_low_is_good(solve_result.min_per_served_employee, green_max=30.0, amber_max=45.0),
+            "GREEN <= 30 min; AMBER <= 45 min; RED > 45 min",
+        ])
+        writer.writerow([])
+        writer.writerow(["infeasibility_hints"])
+        if solve_result.infeasibility_hints:
+            writer.writerow(["hint"])
+            for hint in solve_result.infeasibility_hints:
+                writer.writerow([hint])
+        else:
+            writer.writerow(["none"])
+        writer.writerow([])
+        writer.writerow(["empleados_no_servidos"])
+        writer.writerow(["empleado_id", "prioridad", "distancia_referencia_km", "x_km", "y_km"])
+        for nodo_id in solve_result.omitted_service_points:
+            x, y = scenario.coord_by_node[nodo_id]
+            writer.writerow([nodo_id, scenario.priority_by_employee[nodo_id], f"{((x - scenario.employee_priority_reference_coordinate[0]) ** 2 + (y - scenario.employee_priority_reference_coordinate[1]) ** 2) ** 0.5:.3f}", x, y])
+    print(f"Resumen de solucion guardado en: {csv_path}")
+
+
+def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) -> None:
+    ensure_output_dir(settings.output_dir)
+    csv_path = os.path.join(settings.output_dir, settings.operational_kpis_csv_filename)
+    routes = solve_result.solved_routes
+
+    vehicles_total = len(routes)
+    vehicles_used = sum(1 for route in routes if not route.is_empty_route)
+    fleet_utilization_pct = (vehicles_used / vehicles_total * 100.0) if vehicles_total > 0 else 0.0
+
+    served_employees = solve_result.total_covered_service_points
+    omitted_employees = len(solve_result.omitted_service_points)
+    total_employees = served_employees + omitted_employees
+    service_level_pct = (served_employees / total_employees * 100.0) if total_employees > 0 else 0.0
+
+    durations = [float(route.modeled_route_duration) for route in routes]
+    demands = [float(route.covered_demand) for route in routes]
+    service_stops = [float(route.total_service_stops) for route in routes]
+    demand_utilizations = [route.demand_utilization_pct for route in routes]
+    productive_times = [float(route.productive_time_min) for route in routes]
+
+    total_modeled_duration = sum(durations)
+    total_productive_time = sum(productive_times)
+    productive_time_share_pct = (total_productive_time / total_modeled_duration * 100.0) if total_modeled_duration > 0 else 0.0
+
+    avg_distance_per_served_employee_km = (
+        solve_result.total_physical_route_distance / served_employees if served_employees > 0 else 0.0
+    )
+    avg_time_per_served_employee_min = (total_modeled_duration / served_employees) if served_employees > 0 else 0.0
+    total_uncosted_distance_km = sum(route.uncosted_distance_km for route in routes)
+
+    max_min_duration_ratio = 0.0
+    if durations:
+        min_duration = min(durations)
+        max_duration = max(durations)
+        max_min_duration_ratio = (max_duration / min_duration) if min_duration > 0 else 0.0
+
+    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["metric", "value", "description"])
+
+        mean_demand_utilization = _mean(demand_utilizations)
+        p95_demand_utilization = _percentile(demand_utilizations, 0.95)
+        duration_balance_cv = _coefficient_of_variation(durations)
+        demand_balance_cv = _coefficient_of_variation(demands)
+        service_stops_balance_cv = _coefficient_of_variation(service_stops)
+
+        writer.writerow([
+            "fleet_vehicles_total",
+            vehicles_total,
+            f"Conteo de rutas/vehiculos en solve_result.solved_routes = {vehicles_total}. Interpretacion: no aplica alto/bajo por si solo; se usa como base para tasas.",
+        ])
+        writer.writerow([
+            "fleet_vehicles_used",
+            vehicles_used,
+            f"Conteo de rutas con is_empty_route=False = {vehicles_used}. Interpretacion: alto = mas vehiculos activos; bajo = mayor consolidacion de carga.",
+        ])
+        writer.writerow([
+            "fleet_utilization_pct",
+            f"{fleet_utilization_pct:.2f}",
+            f"(fleet_vehicles_used / fleet_vehicles_total) * 100 = ({vehicles_used} / {vehicles_total}) * 100 = {fleet_utilization_pct:.2f}%. Interpretacion: alto = mas uso de flota (mejor cobertura, posible menor holgura); bajo = subutilizacion o sobredimensionamiento.",
+        ])
+        writer.writerow([
+            "avg_demand_utilization_pct",
+            f"{mean_demand_utilization:.2f}",
+            f"Promedio de demand_utilization_pct por ruta: mean({len(demand_utilizations)} valores) = {mean_demand_utilization:.2f}%. Interpretacion: alto = mejor uso de capacidad; demasiado alto puede reducir resiliencia operativa.",
+        ])
+        writer.writerow([
+            "p95_demand_utilization_pct",
+            f"{p95_demand_utilization:.2f}",
+            f"Percentil 95 de demand_utilization_pct por ruta: p95({len(demand_utilizations)} valores) = {p95_demand_utilization:.2f}%. Interpretacion: alto = cola de rutas casi saturadas; bajo = menor riesgo de saturacion en escenarios pico.",
+        ])
+
+        writer.writerow([
+            "duration_balance_cv",
+            f"{duration_balance_cv:.6f}",
+            f"CV de modeled_route_duration = std(duraciones) / mean(duraciones) = {duration_balance_cv:.6f}. Interpretacion: bajo = rutas balanceadas; alto = desbalance entre rutas.",
+        ])
+        writer.writerow([
+            "demand_balance_cv",
+            f"{demand_balance_cv:.6f}",
+            f"CV de covered_demand por ruta = std(demandas) / mean(demandas) = {demand_balance_cv:.6f}. Interpretacion: bajo = reparto de demanda uniforme; alto = concentracion de carga en pocas rutas.",
+        ])
+        writer.writerow([
+            "service_stops_balance_cv",
+            f"{service_stops_balance_cv:.6f}",
+            f"CV de total_service_stops por ruta = std(stops_servicio) / mean(stops_servicio) = {service_stops_balance_cv:.6f}. Interpretacion: bajo = reparto parejo de paradas; alto = carga operativa desigual.",
+        ])
+        writer.writerow([
+            "max_min_duration_ratio",
+            f"{max_min_duration_ratio:.6f}",
+            f"max(duraciones) / min(duraciones) = {max(durations) if durations else 0.0:.2f} / {min(durations) if durations else 0.0:.2f} = {max_min_duration_ratio:.6f}. Interpretacion: cercano a 1 = buena equidad; alto = gran brecha entre ruta mas larga y mas corta.",
+        ])
+
+        writer.writerow([
+            "total_productive_time_min",
+            f"{total_productive_time:.2f}",
+            f"Suma de productive_time_min en todas las rutas = {total_productive_time:.2f} min. Interpretacion: alto puede indicar mayor trabajo atendido, pero debe leerse junto a cobertura y eficiencia.",
+        ])
+        writer.writerow([
+            "productive_time_share_pct",
+            f"{productive_time_share_pct:.2f}",
+            f"(total_productive_time_min / sum(modeled_route_duration)) * 100 = ({total_productive_time:.2f} / {total_modeled_duration:.2f}) * 100 = {productive_time_share_pct:.2f}%. Interpretacion: alto = mas tiempo util (drive+service); bajo = mas tiempo ocioso/espera.",
+        ])
+        writer.writerow([
+            "avg_distance_per_served_employee_km",
+            f"{avg_distance_per_served_employee_km:.3f}",
+            f"total_physical_route_distance / employees_served = {solve_result.total_physical_route_distance:.3f} / {served_employees} = {avg_distance_per_served_employee_km:.3f} km. Interpretacion: bajo = mejor eficiencia geografica; alto = mayor costo de traslado por atencion.",
+        ])
+        writer.writerow([
+            "avg_time_per_served_employee_min",
+            f"{avg_time_per_served_employee_min:.2f}",
+            f"sum(modeled_route_duration) / employees_served = {total_modeled_duration:.2f} / {served_employees} = {avg_time_per_served_employee_min:.2f} min. Interpretacion: bajo = mayor productividad por empleado servido; alto = mayor esfuerzo temporal por servicio.",
+        ])
+        writer.writerow([
+            "total_uncosted_distance_km",
+            f"{total_uncosted_distance_km:.3f}",
+            f"Suma de uncosted_distance_km en todas las rutas = {total_uncosted_distance_km:.3f} km. Interpretacion: bajo = menor distancia fuera de costo objetivo; alto = mas distancia real no penalizada por reglas de costo.",
+        ])
+
+        writer.writerow([
+            "employees_served",
+            served_employees,
+            f"Valor de solve_result.total_covered_service_points = {served_employees}. Interpretacion: alto = mayor cobertura; bajo = menor nivel de servicio.",
+        ])
+        writer.writerow([
+            "employees_omitted",
+            omitted_employees,
+            f"Conteo de solve_result.omitted_service_points = {omitted_employees}. Interpretacion: bajo = mejor cobertura; alto = mayor demanda insatisfecha.",
+        ])
+        writer.writerow([
+            "service_level_pct",
+            f"{service_level_pct:.2f}",
+            f"(employees_served / (employees_served + employees_omitted)) * 100 = ({served_employees} / {total_employees}) * 100 = {service_level_pct:.2f}%. Interpretacion: alto = mejor calidad de servicio; bajo = cobertura insuficiente.",
+        ])
+    print(f"KPIs operativos guardados en: {csv_path}")
+
+
+def write_all_outputs(settings: Settings, scenario: Scenario, solve_result: SolveResult) -> None:
+    if settings.plot_scenario:
+        plot_scenario(settings, scenario)
+    if settings.plot_all_routes:
+        for route in solve_result.solved_routes:
+            route_nodes = [stop.node_id for stop in route.stops]
+            plot_vehicle_route(settings, scenario, route.vehicle_id, route_nodes, solve_result.omitted_service_points)
+    write_route_details_csv(settings, solve_result)
+    write_stop_details_csv(settings, solve_result)
+    write_solution_summary_csv(settings, solve_result, scenario)
+    write_operational_kpis_csv(settings, solve_result)
