@@ -467,7 +467,8 @@ def solve_vrp(problem: SolverInput) -> SolveResult:
     # covers non-end indices -- a vehicle's end index has no outgoing arc,
     # so no slack var exists there at all (nothing to wait before).
     for node_index in range(routing.Size()):
-        routing.AddToAssignment(time_dimension.SlackVar(node_index))
+        if not routing.IsEnd(node_index):
+            routing.AddToAssignment(time_dimension.SlackVar(node_index))
 
     demand_callback = _build_demand_callback(manager, problem.node_demand)
     demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
