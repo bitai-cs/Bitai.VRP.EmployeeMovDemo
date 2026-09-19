@@ -40,8 +40,8 @@ objective_travel_cost,286678
 objective_omission_penalty,0
 objective_unattributed_cost,593
 solver_status_detail,1
-solver_branches,7090
-solver_failures,2441
+solver_branches,6864
+solver_failures,2362
 
 agregados_flotilla_por_ruta
 duracion_modelada_min_avg,49.42

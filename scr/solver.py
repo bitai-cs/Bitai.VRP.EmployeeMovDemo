@@ -221,6 +221,44 @@ def _modeled_leg_distance_m(
     return distance_m
 
 
+def _reported_leg_distance_m(
+    routing: Any,
+    prev_index: int,
+    current_index: int,
+    vehicle_node_id: int,
+    include_first_leg_cost: list[bool],
+    include_last_leg_cost: list[bool],
+    distance_m: int,
+) -> int:
+    return _modeled_leg_distance_m(
+        routing,
+        prev_index,
+        current_index,
+        vehicle_node_id,
+        include_first_leg_cost,
+        include_last_leg_cost,
+        distance_m,
+    )
+
+
+def _reported_leg_time_min(
+    routing: Any,
+    prev_index: int,
+    current_index: int,
+    vehicle_node_id: int,
+    include_first_leg_time: list[bool],
+    include_last_leg_time: list[bool],
+    time_min: int,
+) -> int:
+    if routing.IsStart(prev_index) and routing.IsEnd(current_index):
+        return 0
+    if routing.IsStart(prev_index) and not include_first_leg_time[vehicle_node_id]:
+        return 0
+    if routing.IsEnd(current_index) and not include_last_leg_time[vehicle_node_id]:
+        return 0
+    return time_min
+
+
 def _classify_stop_type(routing: Any, node_id: int, index: int, service_points_node_offset: int) -> str:
     if routing.IsStart(index):
         return "START"
@@ -633,8 +671,24 @@ def solve_vrp(problem: SolverInput) -> SolveResult:
                 )
             )
             arc_to_next = problem.cost_matrix[node][manager.IndexToNode(next_index)]
-            leg_distance_km_from_prev = arc_to_next.distance_m / 1000.0
-            leg_travel_minutes_from_prev = arc_to_next.time_min
+            leg_distance_km_from_prev = _reported_leg_distance_m(
+                routing,
+                prev_index,
+                next_index,
+                vehicle_start_node,
+                problem.include_first_leg_cost,
+                problem.include_last_leg_cost,
+                arc_to_next.distance_m,
+            ) / 1000.0
+            leg_travel_minutes_from_prev = _reported_leg_time_min(
+                routing,
+                prev_index,
+                next_index,
+                vehicle_start_node,
+                problem.include_first_leg_time,
+                problem.include_last_leg_time,
+                arc_to_next.time_min,
+            )
             cumulative_distance_km += leg_distance_km_from_prev
             route_drive_time_min += arc_to_next.time_min
             route_objective_contribution += _leg_objective_cost(
