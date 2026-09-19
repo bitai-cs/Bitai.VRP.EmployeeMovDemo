@@ -1,7 +1,7 @@
 campo,valor
 estado,FEASIBLE
 valor_objetivo_total,287271
-tiempo_busqueda_ms,30010
+tiempo_busqueda_ms,30047
 empleados_totales,50
 empleados_atendidos_total,50
 empleados_omitidos_total,0
@@ -13,7 +13,7 @@ distancia_contabilizada_total_km,286.678
 distancia_fisica_total_km,571.877
 deadhead_distance_km,406.191
 lag_total_min,250
-total_drive_min,685
+total_drive_min,343
 total_wait_min,0
 total_service_min,250
 average_stop_wait_min,0.000
@@ -40,18 +40,18 @@ objective_travel_cost,286678
 objective_omission_penalty,0
 objective_unattributed_cost,593
 solver_status_detail,1
-solver_branches,6864
-solver_failures,2362
+solver_branches,7528
+solver_failures,2601
 
 agregados_flotilla_por_ruta
 duracion_modelada_min_avg,49.42
 duracion_modelada_min_p95,76.20
 duracion_modelada_min_min,0.00
 duracion_modelada_min_max,85.00
-drive_time_min_avg,57.08
-drive_time_min_p95,90.30
-drive_time_min_min,21.00
-drive_time_min_max,98.00
+drive_time_min_avg,28.58
+drive_time_min_p95,51.20
+drive_time_min_min,0.00
+drive_time_min_max,60.00
 wait_time_min_avg,0.00
 wait_time_min_p95,0.00
 wait_time_min_min,0.00
@@ -60,10 +60,10 @@ service_time_min_avg,20.83
 service_time_min_p95,25.00
 service_time_min_min,0.00
 service_time_min_max,25.00
-productive_time_min_avg,77.92
-productive_time_min_p95,115.30
-productive_time_min_min,27.00
-productive_time_min_max,123.00
+productive_time_min_avg,49.42
+productive_time_min_p95,76.20
+productive_time_min_min,0.00
+productive_time_min_max,85.00
 demand_utilization_pct_avg,83.33
 demand_utilization_pct_p95,100.00
 demand_utilization_pct_min,0.00

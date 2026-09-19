@@ -73,7 +73,7 @@ class SolvedRoute:
     arrival_time: str
     arrival_time_limit: str
     start_delay_from_window_min: int
-    end_buffer_to_limit_min: int
+    remaining_time_to_limit_min: int
     modeled_route_duration: int
     modeled_route_distance: float
     physical_route_distance: float
@@ -257,6 +257,26 @@ def _reported_leg_time_min(
     if routing.IsEnd(current_index) and not include_last_leg_time[vehicle_node_id]:
         return 0
     return time_min
+
+
+def _reported_drive_time_min(
+    routing: Any,
+    prev_index: int,
+    current_index: int,
+    vehicle_node_id: int,
+    include_first_leg_time: list[bool],
+    include_last_leg_time: list[bool],
+    time_min: int,
+) -> int:
+    return _reported_leg_time_min(
+        routing,
+        prev_index,
+        current_index,
+        vehicle_node_id,
+        include_first_leg_time,
+        include_last_leg_time,
+        time_min,
+    )
 
 
 def _classify_stop_type(routing: Any, node_id: int, index: int, service_points_node_offset: int) -> str:
@@ -690,7 +710,15 @@ def solve_vrp(problem: SolverInput) -> SolveResult:
                 arc_to_next.time_min,
             )
             cumulative_distance_km += leg_distance_km_from_prev
-            route_drive_time_min += arc_to_next.time_min
+            route_drive_time_min += _reported_drive_time_min(
+                routing,
+                prev_index,
+                next_index,
+                vehicle_start_node,
+                problem.include_first_leg_time,
+                problem.include_last_leg_time,
+                arc_to_next.time_min,
+            )
             route_objective_contribution += _leg_objective_cost(
                 routing,
                 manager,
@@ -761,10 +789,10 @@ def solve_vrp(problem: SolverInput) -> SolveResult:
 
         if problem.time_window_enabled:
             start_delay_from_window_min = int(start_t)
-            end_buffer_to_limit_min = int(time_window_duration - end_t)
+            remaining_time_to_limit_min = int(time_window_duration - end_t)
         else:
             start_delay_from_window_min = 0
-            end_buffer_to_limit_min = int(problem.max_vehicle_duration_min - modeled_route_duration)
+            remaining_time_to_limit_min = int(problem.max_vehicle_duration_min - modeled_route_duration)
 
         if route_physical_distance > 0:
             distance_efficiency_ratio = modeled_route_distance_km / route_physical_distance
@@ -800,7 +828,7 @@ def solve_vrp(problem: SolverInput) -> SolveResult:
                 arrival_time=format_time_from_minutes(time_window_lower_bound + end_t),
                 arrival_time_limit=time_limit_label,
                 start_delay_from_window_min=start_delay_from_window_min,
-                end_buffer_to_limit_min=end_buffer_to_limit_min,
+                remaining_time_to_limit_min=remaining_time_to_limit_min,
                 modeled_route_duration=modeled_route_duration,
                 modeled_route_distance=modeled_route_distance_km,
                 physical_route_distance=route_physical_distance,
