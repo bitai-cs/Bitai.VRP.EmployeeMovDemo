@@ -1,18 +1,18 @@
-campo,valor
-estado,FEASIBLE
-valor_objetivo_total,287271
-tiempo_busqueda_ms,30047
-empleados_totales,50
-empleados_atendidos_total,50
-empleados_omitidos_total,0
+field,value
+status,FEASIBLE
+total_objective_value,287271
+search_time_ms,30018
+total_employees,50
+served_employees_total,50
+omitted_employees_total,0
 service_level_pct,100.00
 weighted_service_level_pct,100.00
 served_priority_weight,4163
 total_priority_weight,4163
-distancia_contabilizada_total_km,286.678
-distancia_fisica_total_km,571.877
+accounted_distance_total_km,286.678
+physical_distance_total_km,571.877
 deadhead_distance_km,406.191
-lag_total_min,250
+total_service_time_min,250
 total_drive_min,343
 total_wait_min,0
 total_service_min,250
@@ -40,14 +40,14 @@ objective_travel_cost,286678
 objective_omission_penalty,0
 objective_unattributed_cost,593
 solver_status_detail,1
-solver_branches,7528
-solver_failures,2601
+solver_branches,7050
+solver_failures,2427
 
-agregados_flotilla_por_ruta
-duracion_modelada_min_avg,49.42
-duracion_modelada_min_p95,76.20
-duracion_modelada_min_min,0.00
-duracion_modelada_min_max,85.00
+fleet_aggregates_by_route
+modeled_duration_min_avg,49.42
+modeled_duration_min_p95,76.20
+modeled_duration_min_min,0.00
+modeled_duration_min_max,85.00
 drive_time_min_avg,28.58
 drive_time_min_p95,51.20
 drive_time_min_min,0.00
@@ -81,7 +81,7 @@ route_objective_contribution_p95,42744.50
 route_objective_contribution_min,0.00
 route_objective_contribution_max,50296.00
 
-kpi_semaforos
+kpi_status_flags
 kpi,value,status,rule
 service_level_pct,100.00,GREEN,GREEN >= 98; AMBER >= 90; RED < 90
 weighted_service_level_pct,100.00,GREEN,GREEN >= 99; AMBER >= 95; RED < 95
@@ -94,5 +94,5 @@ min_per_served_employee,11.860,GREEN,GREEN <= 30 min; AMBER <= 45 min; RED > 45 
 infeasibility_hints
 none
 
-empleados_no_servidos
-empleado_id,prioridad,distancia_referencia_km,x_km,y_km
+omitted_employees
+employee_id,priority,reference_distance_km,x_km,y_km

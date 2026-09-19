@@ -218,17 +218,17 @@ def write_route_details_csv(settings: Settings, solve_result: SolveResult) -> No
         writer = csv.writer(handle)
         writer.writerow([
             "vehicle_id",
-            "origen",
-            "destino",
-            "empleados_atendidos",
-            "capacidad_vehiculo",
-            "utilizacion_demanda_pct",
-            "hora_salida",
-            "hora_llegada",
-            "hora_limite",
+            "origin",
+            "destination",
+            "employees_served",
+            "vehicle_capacity",
+            "demand_utilization_pct",
+            "departure_time",
+            "arrival_time",
+            "time_limit",
             "start_delay_window_min",
             "remaining_time_to_limit_min",
-            "duracion_modelada_min",
+            "modeled_duration_min",
             "drive_time_min",
             "wait_time_min",
             "service_time_min",
@@ -237,10 +237,10 @@ def write_route_details_csv(settings: Settings, solve_result: SolveResult) -> No
             "drive_time_pct",
             "service_time_pct",
             "wait_time_pct",
-            "distancia_contabilizada_km",
-            "distancia_fisica_km",
+            "accounted_distance_km",
+            "physical_distance_km",
             "distance_efficiency_ratio",
-            "distancia_no_contabilizada_km",
+            "uncosted_distance_km",
             "route_objective_contribution",
             "total_stops",
             "total_service_stops",
@@ -250,8 +250,8 @@ def write_route_details_csv(settings: Settings, solve_result: SolveResult) -> No
             "priority_low_served",
             "priority_medium_served",
             "priority_high_served",
-            "lag_min",
-            "ruta",
+            "service_time_min",
+            "route_path",
         ])
         for route in solve_result.solved_routes:
             writer.writerow([
@@ -377,21 +377,21 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
 
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["campo", "valor"])
-        writer.writerow(["estado", solve_result.status])
-        writer.writerow(["valor_objetivo_total", solve_result.total_objective_value])
-        writer.writerow(["tiempo_busqueda_ms", solve_result.search_wall_time_ms])
-        writer.writerow(["empleados_totales", settings.number_of_employees])
-        writer.writerow(["empleados_atendidos_total", solve_result.total_covered_service_points])
-        writer.writerow(["empleados_omitidos_total", len(solve_result.omitted_service_points)])
+        writer.writerow(["field", "value"])
+        writer.writerow(["status", solve_result.status])
+        writer.writerow(["total_objective_value", solve_result.total_objective_value])
+        writer.writerow(["search_time_ms", solve_result.search_wall_time_ms])
+        writer.writerow(["total_employees", settings.number_of_employees])
+        writer.writerow(["served_employees_total", solve_result.total_covered_service_points])
+        writer.writerow(["omitted_employees_total", len(solve_result.omitted_service_points)])
         writer.writerow(["service_level_pct", f"{solve_result.service_level_pct:.2f}"])
         writer.writerow(["weighted_service_level_pct", f"{solve_result.weighted_service_level_pct:.2f}"])
         writer.writerow(["served_priority_weight", solve_result.served_priority_weight])
         writer.writerow(["total_priority_weight", solve_result.total_priority_weight])
-        writer.writerow(["distancia_contabilizada_total_km", f"{solve_result.total_modeled_route_distance:.3f}"])
-        writer.writerow(["distancia_fisica_total_km", f"{solve_result.total_physical_route_distance:.3f}"])
+        writer.writerow(["accounted_distance_total_km", f"{solve_result.total_modeled_route_distance:.3f}"])
+        writer.writerow(["physical_distance_total_km", f"{solve_result.total_physical_route_distance:.3f}"])
         writer.writerow(["deadhead_distance_km", f"{solve_result.deadhead_distance_km:.3f}"])
-        writer.writerow(["lag_total_min", solve_result.total_modeled_route_lag])
+        writer.writerow(["total_service_time_min", solve_result.total_modeled_route_lag])
         writer.writerow(["total_drive_min", solve_result.total_drive_min])
         writer.writerow(["total_wait_min", solve_result.total_wait_min])
         writer.writerow(["total_service_min", solve_result.total_service_min])
@@ -422,8 +422,8 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
         writer.writerow(["solver_branches", solve_result.solver_branches])
         writer.writerow(["solver_failures", solve_result.solver_failures])
         writer.writerow([])
-        writer.writerow(["agregados_flotilla_por_ruta"])
-        _write_aggregate_rows(writer, "duracion_modelada_min", modeled_route_duration_values, decimals=2)
+        writer.writerow(["fleet_aggregates_by_route"])
+        _write_aggregate_rows(writer, "modeled_duration_min", modeled_route_duration_values, decimals=2)
         _write_aggregate_rows(writer, "drive_time_min", total_drive_time_values, decimals=2)
         _write_aggregate_rows(writer, "wait_time_min", total_wait_time_values, decimals=2)
         _write_aggregate_rows(writer, "service_time_min", total_service_time_values, decimals=2)
@@ -433,7 +433,7 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
         _write_aggregate_rows(writer, "total_service_stops", total_service_stops_values, decimals=2)
         _write_aggregate_rows(writer, "route_objective_contribution", route_objective_contribution_values, decimals=2)
         writer.writerow([])
-        writer.writerow(["kpi_semaforos"])
+        writer.writerow(["kpi_status_flags"])
         writer.writerow(["kpi", "value", "status", "rule"])
         writer.writerow([
             "service_level_pct",
@@ -486,8 +486,8 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
         else:
             writer.writerow(["none"])
         writer.writerow([])
-        writer.writerow(["empleados_no_servidos"])
-        writer.writerow(["empleado_id", "prioridad", "distancia_referencia_km", "x_km", "y_km"])
+        writer.writerow(["omitted_employees"])
+        writer.writerow(["employee_id", "priority", "reference_distance_km", "x_km", "y_km"])
         for nodo_id in solve_result.omitted_service_points:
             x, y = scenario.coord_by_node[nodo_id]
             writer.writerow([nodo_id, scenario.priority_by_employee[nodo_id], f"{((x - scenario.employee_priority_reference_coordinate[0]) ** 2 + (y - scenario.employee_priority_reference_coordinate[1]) ** 2) ** 0.5:.3f}", x, y])
