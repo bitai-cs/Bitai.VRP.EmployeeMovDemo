@@ -60,6 +60,7 @@ class Settings:
     route_details_csv_filename: str
     route_stop_details_csv_filename: str
     solution_summary_csv_filename: str
+    omitted_employees_csv_filename: str
     operational_kpis_csv_filename: str
     plot_figsize: tuple[int, int]
     plot_dpi: int
@@ -345,6 +346,7 @@ def load_settings(env_file: str = ".env") -> Settings:
     resolved["ROUTE_DETAILS_CSV_FILENAME"] = f"{base_name}-route-details.csv"
     resolved["ROUTE_STOP_DETAILS_CSV_FILENAME"] = f"{base_name}-stop-details.csv"
     resolved["SOLUTION_SUMMARY_CSV_FILENAME"] = f"{base_name}-solution-summary.csv"
+    resolved["OMITTED_EMPLOYEES_CSV_FILENAME"] = f"{base_name}-omitted_employees.csv"
     resolved["OPERATIONAL_KPIS_CSV_FILENAME"] = f"{base_name}-operational-kpis.csv"
 
     output_dir = resolved["OUTPUT_DIR"]
@@ -433,6 +435,7 @@ def load_settings(env_file: str = ".env") -> Settings:
         route_details_csv_filename=str(resolved["ROUTE_DETAILS_CSV_FILENAME"]),
         route_stop_details_csv_filename=str(resolved["ROUTE_STOP_DETAILS_CSV_FILENAME"]),
         solution_summary_csv_filename=str(resolved["SOLUTION_SUMMARY_CSV_FILENAME"]),
+        omitted_employees_csv_filename=str(resolved["OMITTED_EMPLOYEES_CSV_FILENAME"]),
         operational_kpis_csv_filename=str(resolved["OPERATIONAL_KPIS_CSV_FILENAME"]),
         plot_figsize=tuple(resolved["PLOT_FIGSIZE"]),
         plot_dpi=int(resolved["PLOT_DPI"]),

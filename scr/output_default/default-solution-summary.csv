@@ -1,7 +1,7 @@
 field,value
 status,FEASIBLE
 total_objective_value,287271
-search_time_ms,30018
+search_time_ms,30021
 total_employees,50
 served_employees_total,50
 omitted_employees_total,0
@@ -40,8 +40,8 @@ objective_travel_cost,286678
 objective_omission_penalty,0
 objective_unattributed_cost,593
 solver_status_detail,1
-solver_branches,7050
-solver_failures,2427
+solver_branches,3599
+solver_failures,1246
 
 fleet_aggregates_by_route
 modeled_duration_min_avg,49.42
@@ -93,6 +93,3 @@ min_per_served_employee,11.860,GREEN,GREEN <= 30 min; AMBER <= 45 min; RED > 45 
 
 infeasibility_hints
 none
-
-omitted_employees
-employee_id,priority,reference_distance_km,x_km,y_km

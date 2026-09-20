@@ -8,7 +8,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 from config import Settings
 from scenario import Scenario
 from solver import SolveResult
@@ -485,13 +484,26 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
                 writer.writerow([hint])
         else:
             writer.writerow(["none"])
-        writer.writerow([])
-        writer.writerow(["omitted_employees"])
-        writer.writerow(["employee_id", "priority", "reference_distance_km", "x_km", "y_km"])
-        for nodo_id in solve_result.omitted_service_points:
-            x, y = scenario.coord_by_node[nodo_id]
-            writer.writerow([nodo_id, scenario.priority_by_employee[nodo_id], f"{((x - scenario.employee_priority_reference_coordinate[0]) ** 2 + (y - scenario.employee_priority_reference_coordinate[1]) ** 2) ** 0.5:.3f}", x, y])
     print(f"Resumen de solucion guardado en: {csv_path}")
+
+
+def write_omitted_employees_csv(settings: Settings, solve_result: SolveResult, scenario: Scenario) -> None:
+    ensure_output_dir(settings.output_dir)
+    csv_path = os.path.join(settings.output_dir, settings.omitted_employees_csv_filename)
+    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["employee_id", "priority", "reference_distance_km", "x_km", "y_km"])
+        for employee_id in solve_result.omitted_service_points:
+            x, y = scenario.coord_by_node[employee_id]
+            reference_distance_km = ((x - scenario.employee_priority_reference_coordinate[0]) ** 2 + (y - scenario.employee_priority_reference_coordinate[1]) ** 2) ** 0.5
+            writer.writerow([
+                employee_id,
+                scenario.priority_by_employee[employee_id],
+                f"{reference_distance_km:.3f}",
+                x,
+                y,
+            ])
+    print(f"Empleados omitidos guardados en: {csv_path}")
 
 
 def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) -> None:
@@ -640,5 +652,6 @@ def write_all_outputs(settings: Settings, scenario: Scenario, solve_result: Solv
             plot_vehicle_route(settings, scenario, route.vehicle_id, route_nodes, solve_result.omitted_service_points)
     write_route_details_csv(settings, solve_result)
     write_stop_details_csv(settings, solve_result)
+    write_omitted_employees_csv(settings, solve_result, scenario)
     write_solution_summary_csv(settings, solve_result, scenario)
     write_operational_kpis_csv(settings, solve_result)
