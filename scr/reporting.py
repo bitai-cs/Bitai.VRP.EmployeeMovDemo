@@ -543,9 +543,10 @@ def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) ->
     ensure_output_dir(settings.output_dir)
     csv_path = os.path.join(settings.output_dir, settings.operational_kpis_csv_filename)
     routes = solve_result.solved_routes
+    operational_routes = [route for route in routes if not route.is_empty_route]
 
     vehicles_total = len(routes)
-    vehicles_used = sum(1 for route in routes if not route.is_empty_route)
+    vehicles_used = len(operational_routes)
     fleet_utilization_pct = (vehicles_used / vehicles_total * 100.0) if vehicles_total > 0 else 0.0
 
     served_employees = solve_result.total_covered_service_points
@@ -553,11 +554,11 @@ def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) ->
     total_employees = served_employees + omitted_employees
     service_level_pct = (served_employees / total_employees * 100.0) if total_employees > 0 else 0.0
 
-    durations = [float(route.modeled_route_duration) for route in routes]
-    demands = [float(route.covered_demand) for route in routes]
-    service_stops = [float(route.total_service_stops) for route in routes]
-    demand_utilizations = [route.demand_utilization_pct for route in routes]
-    productive_times = [float(route.productive_time_min) for route in routes]
+    durations = [float(route.modeled_route_duration) for route in operational_routes]
+    demands = [float(route.covered_demand) for route in operational_routes]
+    service_stops = [float(route.total_service_stops) for route in operational_routes]
+    demand_utilizations = [route.demand_utilization_pct for route in operational_routes]
+    productive_times = [float(route.productive_time_min) for route in operational_routes]
 
     total_modeled_duration = sum(durations)
     total_productive_time = sum(productive_times)
@@ -700,27 +701,6 @@ def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) ->
             f"{solve_result.average_stop_wait_min:.3f}",
             "<= 5 min preferred",
             "Average waiting time at stops. Higher values indicate operational friction or schedule slack.",
-        )
-        add_kpi(
-            "risk_and_exceptions",
-            "km_per_served_employee",
-            f"{solve_result.km_per_served_employee:.3f}",
-            "<= 20 km preferred",
-            "Physical distance per served employee. This is an efficiency check for geographic dispersion.",
-        )
-        add_kpi(
-            "risk_and_exceptions",
-            "min_per_served_employee",
-            f"{solve_result.min_per_served_employee:.3f}",
-            "<= 30 min preferred",
-            "Average modeled minutes required per served employee. Useful for operational effort assessment.",
-        )
-        add_kpi(
-            "risk_and_exceptions",
-            "solver_status_detail",
-            solve_result.solver_status_detail,
-            "feasible or near-feasible preferred",
-            "Detailed solver status. It should be reviewed when the route plan is not comfortable or is near infeasible.",
         )
 
     print(f"KPIs operativos guardados en: {csv_path}")

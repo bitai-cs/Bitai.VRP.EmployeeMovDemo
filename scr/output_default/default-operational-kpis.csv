@@ -10,11 +10,8 @@ efficiency,total_uncosted_distance_km,285.199,as low as possible,Distance outsid
 load_balance_and_fleet,fleet_vehicles_total,12,scenario-defined,Total vehicles available for the current scenario.
 load_balance_and_fleet,fleet_vehicles_used,11,as needed,Number of routes that are actually active in the solution.
 load_balance_and_fleet,fleet_utilization_pct,91.67%,60%-90% preferred,Share of the available fleet that is actively used. Good utilization reduces idle capacity without overstretching the fleet.
-load_balance_and_fleet,avg_demand_utilization_pct,83.33%,60%-85% preferred,Average demand utilization across routes. Values near saturation indicate heavy consolidation but increased risk of tight routing.
+load_balance_and_fleet,avg_demand_utilization_pct,90.91%,60%-85% preferred,Average demand utilization across routes. Values near saturation indicate heavy consolidation but increased risk of tight routing.
 load_balance_and_fleet,p95_demand_utilization_pct,100.00%,<= 100% preferred,P95 demand utilization across routes. This identifies the most stressed routes in the plan.
-load_balance_and_fleet,duration_balance_cv,0.451546,<= 0.50 preferred,Coefficient of variation for route durations. Lower values indicate more balanced route load across vehicles.
-load_balance_and_fleet,max_min_duration_ratio,0.000000,close to 1.0 preferred,Max/min duration ratio across routes. A high value means uneven routing effort among vehicles.
+load_balance_and_fleet,duration_balance_cv,0.321822,<= 0.50 preferred,Coefficient of variation for route durations. Lower values indicate more balanced route load across vehicles.
+load_balance_and_fleet,max_min_duration_ratio,3.863636,close to 1.0 preferred,Max/min duration ratio across routes. A high value means uneven routing effort among vehicles.
 risk_and_exceptions,average_stop_wait_min,0.000,<= 5 min preferred,Average waiting time at stops. Higher values indicate operational friction or schedule slack.
-risk_and_exceptions,km_per_served_employee,11.438,<= 20 km preferred,Physical distance per served employee. This is an efficiency check for geographic dispersion.
-risk_and_exceptions,min_per_served_employee,11.860,<= 30 min preferred,Average modeled minutes required per served employee. Useful for operational effort assessment.
-risk_and_exceptions,solver_status_detail,1,feasible or near-feasible preferred,Detailed solver status. It should be reviewed when the route plan is not comfortable or is near infeasible.
