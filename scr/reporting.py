@@ -19,8 +19,9 @@ from solver import SolveResult
 #   must not mix physical values with modeled values.
 # - solution-summary is an executive summary and should contain the key aggregates, but it must not
 #   include a second KPI_status_flags block or a level of analysis that duplicates the KPI report.
-# - operational-kpis owns the semaphore-based status classification and the explanation of service
-#   performance; if a metric has a status, its rule must live there.
+# - operational-kpis owns the business-oriented KPI grouping and the operational interpretation of
+#   service performance; it is not a traffic-light dashboard and it does not assign green/amber/red
+#   labels to every metric.
 # - omitted_employees has its own dedicated CSV and must not be embedded inside the summary.
 # - Column naming must remain in English and use business language: route, stop, service,
 #   remaining_time_to_limit_min, service_time_min, etc. Internal optimizer variable names must not
@@ -542,9 +543,10 @@ def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) ->
     ensure_output_dir(settings.output_dir)
     csv_path = os.path.join(settings.output_dir, settings.operational_kpis_csv_filename)
     routes = solve_result.solved_routes
+    operational_routes = [route for route in routes if not route.is_empty_route]
 
     vehicles_total = len(routes)
-    vehicles_used = sum(1 for route in routes if not route.is_empty_route)
+    vehicles_used = len(operational_routes)
     fleet_utilization_pct = (vehicles_used / vehicles_total * 100.0) if vehicles_total > 0 else 0.0
 
     served_employees = solve_result.total_covered_service_points
@@ -552,11 +554,11 @@ def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) ->
     total_employees = served_employees + omitted_employees
     service_level_pct = (served_employees / total_employees * 100.0) if total_employees > 0 else 0.0
 
-    durations = [float(route.modeled_route_duration) for route in routes]
-    demands = [float(route.covered_demand) for route in routes]
-    service_stops = [float(route.total_service_stops) for route in routes]
-    demand_utilizations = [route.demand_utilization_pct for route in routes]
-    productive_times = [float(route.productive_time_min) for route in routes]
+    durations = [float(route.modeled_route_duration) for route in operational_routes]
+    demands = [float(route.covered_demand) for route in operational_routes]
+    service_stops = [float(route.total_service_stops) for route in operational_routes]
+    demand_utilizations = [route.demand_utilization_pct for route in operational_routes]
+    productive_times = [float(route.productive_time_min) for route in operational_routes]
 
     total_modeled_duration = sum(durations)
     total_productive_time = sum(productive_times)
@@ -576,155 +578,131 @@ def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) ->
 
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["metric", "value", "description"])
+        writer.writerow(["section", "metric", "value", "target", "interpretation"])
 
         mean_demand_utilization = _mean(demand_utilizations)
         p95_demand_utilization = _percentile(demand_utilizations, 0.95)
         duration_balance_cv = _coefficient_of_variation(durations)
-        demand_balance_cv = _coefficient_of_variation(demands)
-        service_stops_balance_cv = _coefficient_of_variation(service_stops)
 
-        writer.writerow([
-            "fleet_vehicles_total",
-            vehicles_total,
-            f"Conteo de rutas/vehiculos en solve_result.solved_routes = {vehicles_total}. Interpretacion: no aplica alto/bajo por si solo; se usa como base para tasas.",
-        ])
-        writer.writerow([
-            "fleet_vehicles_used",
-            vehicles_used,
-            f"Conteo de rutas con is_empty_route=False = {vehicles_used}. Interpretacion: alto = mas vehiculos activos; bajo = mayor consolidacion de carga.",
-        ])
-        writer.writerow([
-            "fleet_utilization_pct",
-            f"{fleet_utilization_pct:.2f}",
-            f"(fleet_vehicles_used / fleet_vehicles_total) * 100 = ({vehicles_used} / {vehicles_total}) * 100 = {fleet_utilization_pct:.2f}%. Interpretacion: alto = mas uso de flota (mejor cobertura, posible menor holgura); bajo = subutilizacion o sobredimensionamiento.",
-        ])
-        writer.writerow([
-            "avg_demand_utilization_pct",
-            f"{mean_demand_utilization:.2f}",
-            f"Promedio de demand_utilization_pct por ruta: mean({len(demand_utilizations)} valores) = {mean_demand_utilization:.2f}%. Interpretacion: alto = mejor uso de capacidad; demasiado alto puede reducir resiliencia operativa.",
-        ])
-        writer.writerow([
-            "p95_demand_utilization_pct",
-            f"{p95_demand_utilization:.2f}",
-            f"Percentil 95 de demand_utilization_pct por ruta: p95({len(demand_utilizations)} valores) = {p95_demand_utilization:.2f}%. Interpretacion: alto = cola de rutas casi saturadas; bajo = menor riesgo de saturacion en escenarios pico.",
-        ])
+        def add_kpi(section: str, metric: str, value: object, target: str, interpretation: str) -> None:
+            writer.writerow([section, metric, value, target, interpretation])
 
-        writer.writerow([
-            "duration_balance_cv",
-            f"{duration_balance_cv:.6f}",
-            f"CV de modeled_route_duration = std(duraciones) / mean(duraciones) = {duration_balance_cv:.6f}. Interpretacion: bajo = rutas balanceadas; alto = desbalance entre rutas.",
-        ])
-        writer.writerow([
-            "demand_balance_cv",
-            f"{demand_balance_cv:.6f}",
-            f"CV de covered_demand por ruta = std(demandas) / mean(demandas) = {demand_balance_cv:.6f}. Interpretacion: bajo = reparto de demanda uniforme; alto = concentracion de carga en pocas rutas.",
-        ])
-        writer.writerow([
-            "service_stops_balance_cv",
-            f"{service_stops_balance_cv:.6f}",
-            f"CV de total_service_stops por ruta = std(stops_servicio) / mean(stops_servicio) = {service_stops_balance_cv:.6f}. Interpretacion: bajo = reparto parejo de paradas; alto = carga operativa desigual.",
-        ])
-        writer.writerow([
-            "max_min_duration_ratio",
-            f"{max_min_duration_ratio:.6f}",
-            f"max(duraciones) / min(duraciones) = {max(durations) if durations else 0.0:.2f} / {min(durations) if durations else 0.0:.2f} = {max_min_duration_ratio:.6f}. Interpretacion: cercano a 1 = buena equidad; alto = gran brecha entre ruta mas larga y mas corta.",
-        ])
-
-        writer.writerow([
-            "total_productive_time_min",
-            f"{total_productive_time:.2f}",
-            f"Suma de productive_time_min en todas las rutas = {total_productive_time:.2f} min. Interpretacion: alto puede indicar mayor trabajo atendido, pero debe leerse junto a cobertura y eficiencia.",
-        ])
-        writer.writerow([
-            "productive_time_share_pct",
-            f"{productive_time_share_pct:.2f}",
-            f"(total_productive_time_min / sum(modeled_route_duration)) * 100 = ({total_productive_time:.2f} / {total_modeled_duration:.2f}) * 100 = {productive_time_share_pct:.2f}%. Interpretacion: alto = mas tiempo util (drive+service); bajo = mas tiempo ocioso/espera.",
-        ])
-        writer.writerow([
-            "avg_distance_per_served_employee_km",
-            f"{avg_distance_per_served_employee_km:.3f}",
-            f"total_physical_route_distance / employees_served = {solve_result.total_physical_route_distance:.3f} / {served_employees} = {avg_distance_per_served_employee_km:.3f} km. Interpretacion: bajo = mejor eficiencia geografica; alto = mayor costo de traslado por atencion.",
-        ])
-        writer.writerow([
-            "avg_time_per_served_employee_min",
-            f"{avg_time_per_served_employee_min:.2f}",
-            f"sum(modeled_route_duration) / employees_served = {total_modeled_duration:.2f} / {served_employees} = {avg_time_per_served_employee_min:.2f} min. Interpretacion: bajo = mayor productividad por empleado servido; alto = mayor esfuerzo temporal por servicio.",
-        ])
-        writer.writerow([
-            "total_uncosted_distance_km",
-            f"{total_uncosted_distance_km:.3f}",
-            f"Suma de uncosted_distance_km en todas las rutas = {total_uncosted_distance_km:.3f} km. Interpretacion: bajo = menor distancia fuera de costo objetivo; alto = mas distancia real no penalizada por reglas de costo.",
-        ])
-
-        writer.writerow([
+        add_kpi(
+            "coverage_and_service",
+            "service_level_pct",
+            f"{service_level_pct:.2f}%",
+            ">= 95%",
+            "Share of employees served relative to total demand. This is the primary service coverage metric.",
+        )
+        add_kpi(
+            "coverage_and_service",
+            "weighted_service_level_pct",
+            f"{solve_result.weighted_service_level_pct:.2f}%",
+            ">= 97%",
+            "Priority-weighted service coverage. It reflects whether the most critical demand is being served.",
+        )
+        add_kpi(
+            "coverage_and_service",
             "employees_served",
             served_employees,
-            f"Valor de solve_result.total_covered_service_points = {served_employees}. Interpretacion: alto = mayor cobertura; bajo = menor nivel de servicio.",
-        ])
-        writer.writerow([
+            "as high as possible",
+            "Count of employees successfully covered by the solved routes.",
+        )
+        add_kpi(
+            "coverage_and_service",
             "employees_omitted",
             omitted_employees,
-            f"Conteo de solve_result.omitted_service_points = {omitted_employees}. Interpretacion: bajo = mejor cobertura; alto = mayor demanda insatisfecha.",
-        ])
-        writer.writerow([
-            "service_level_pct",
-            f"{service_level_pct:.2f}",
-            f"(employees_served / (employees_served + employees_omitted)) * 100 = ({served_employees} / {total_employees}) * 100 = {service_level_pct:.2f}%. Interpretacion: alto = mejor calidad de servicio; bajo = cobertura insuficiente.",
-        ])
+            "0 preferred",
+            "Count of employees left unserved. This should be minimized in a feasible plan.",
+        )
 
-        writer.writerow([])
-        writer.writerow(["kpi_status_flags"])
-        writer.writerow(["kpi", "value", "status", "rule", "description"])
-        writer.writerow([
-            "service_level_pct",
-            f"{service_level_pct:.2f}",
-            _semaphore_high_is_good(service_level_pct, green_min=98.0, amber_min=90.0),
-            "GREEN >= 98; AMBER >= 90; RED < 90",
-            "Cobertura efectiva del servicio, expresada como % de empleados atendidos.",
-        ])
-        writer.writerow([
-            "weighted_service_level_pct",
-            f"{solve_result.weighted_service_level_pct:.2f}",
-            _semaphore_high_is_good(solve_result.weighted_service_level_pct, green_min=99.0, amber_min=95.0),
-            "GREEN >= 99; AMBER >= 95; RED < 95",
-            "Cobertura ponderada por prioridad del empleado atendido.",
-        ])
-        writer.writerow([
+        add_kpi(
+            "efficiency",
+            "avg_distance_per_served_employee_km",
+            f"{avg_distance_per_served_employee_km:.3f}",
+            "<= 20 km preferred",
+            "Average physical distance per served employee. Lower values indicate tighter geographic efficiency.",
+        )
+        add_kpi(
+            "efficiency",
+            "avg_time_per_served_employee_min",
+            f"{avg_time_per_served_employee_min:.2f}",
+            "<= 20 min preferred",
+            "Average modeled time per served employee. Useful for comparing effort per worker served.",
+        )
+        add_kpi(
+            "efficiency",
+            "productive_time_share_pct",
+            f"{productive_time_share_pct:.2f}%",
+            ">= 80% preferred",
+            "Share of modeled route time spent in productive activity (drive + service), versus waiting or slack.",
+        )
+        add_kpi(
+            "efficiency",
+            "total_uncosted_distance_km",
+            f"{total_uncosted_distance_km:.3f}",
+            "as low as possible",
+            "Distance outside the objective cost logic. This helps reveal travel that is not fully captured by the scoring model.",
+        )
+
+        add_kpi(
+            "load_balance_and_fleet",
+            "fleet_vehicles_total",
+            vehicles_total,
+            "scenario-defined",
+            "Total vehicles available for the current scenario.",
+        )
+        add_kpi(
+            "load_balance_and_fleet",
+            "fleet_vehicles_used",
+            vehicles_used,
+            "as needed",
+            "Number of routes that are actually active in the solution.",
+        )
+        add_kpi(
+            "load_balance_and_fleet",
             "fleet_utilization_pct",
-            f"{fleet_utilization_pct:.2f}",
-            _semaphore_mid_band_is_good(fleet_utilization_pct, green_min=60.0, green_max=90.0, amber_min=40.0, amber_max=100.0),
-            "GREEN in [60, 90]; AMBER in [40, 100]; RED outside [40, 100]",
-            "Porcentaje de vehículos activos respecto al total disponible.",
-        ])
-        writer.writerow([
-            "workload_balance_duration_std",
-            f"{solve_result.workload_balance_duration_std:.3f}",
-            _semaphore_low_is_good(solve_result.workload_balance_duration_std, green_max=12.0, amber_max=25.0),
-            "GREEN <= 12 min; AMBER <= 25 min; RED > 25 min",
-            "Desviación estándar de la duración entre rutas para evaluar equilibrio de carga.",
-        ])
-        writer.writerow([
+            f"{fleet_utilization_pct:.2f}%",
+            "60%-90% preferred",
+            "Share of the available fleet that is actively used. Good utilization reduces idle capacity without overstretching the fleet.",
+        )
+        add_kpi(
+            "load_balance_and_fleet",
+            "avg_demand_utilization_pct",
+            f"{mean_demand_utilization:.2f}%",
+            "60%-85% preferred",
+            "Average demand utilization across routes. Values near saturation indicate heavy consolidation but increased risk of tight routing.",
+        )
+        add_kpi(
+            "load_balance_and_fleet",
+            "p95_demand_utilization_pct",
+            f"{p95_demand_utilization:.2f}%",
+            "<= 100% preferred",
+            "P95 demand utilization across routes. This identifies the most stressed routes in the plan.",
+        )
+        add_kpi(
+            "load_balance_and_fleet",
+            "duration_balance_cv",
+            f"{duration_balance_cv:.6f}",
+            "<= 0.50 preferred",
+            "Coefficient of variation for route durations. Lower values indicate more balanced route load across vehicles.",
+        )
+        add_kpi(
+            "load_balance_and_fleet",
+            "max_min_duration_ratio",
+            f"{max_min_duration_ratio:.6f}",
+            "close to 1.0 preferred",
+            "Max/min duration ratio across routes. A high value means uneven routing effort among vehicles.",
+        )
+
+        add_kpi(
+            "risk_and_exceptions",
             "average_stop_wait_min",
             f"{solve_result.average_stop_wait_min:.3f}",
-            _semaphore_low_is_good(solve_result.average_stop_wait_min, green_max=5.0, amber_max=15.0),
-            "GREEN <= 5 min; AMBER <= 15 min; RED > 15 min",
-            "Tiempo promedio de espera en las paradas dentro de la ruta.",
-        ])
-        writer.writerow([
-            "km_per_served_employee",
-            f"{solve_result.km_per_served_employee:.3f}",
-            _semaphore_low_is_good(solve_result.km_per_served_employee, green_max=20.0, amber_max=30.0),
-            "GREEN <= 20 km; AMBER <= 30 km; RED > 30 km",
-            "Distancia física media por empleado atendido.",
-        ])
-        writer.writerow([
-            "min_per_served_employee",
-            f"{solve_result.min_per_served_employee:.3f}",
-            _semaphore_low_is_good(solve_result.min_per_served_employee, green_max=30.0, amber_max=45.0),
-            "GREEN <= 30 min; AMBER <= 45 min; RED > 45 min",
-            "Tiempo medio por empleado atendido.",
-        ])
+            "<= 5 min preferred",
+            "Average waiting time at stops. Higher values indicate operational friction or schedule slack.",
+        )
+
     print(f"KPIs operativos guardados en: {csv_path}")
 
 

@@ -1,18 +1,17 @@
-metric,value,description
-fleet_vehicles_total,12,Conteo de rutas/vehiculos en solve_result.solved_routes = 12. Interpretacion: no aplica alto/bajo por si solo; se usa como base para tasas.
-fleet_vehicles_used,11,Conteo de rutas con is_empty_route=False = 11. Interpretacion: alto = mas vehiculos activos; bajo = mayor consolidacion de carga.
-fleet_utilization_pct,91.67,"(fleet_vehicles_used / fleet_vehicles_total) * 100 = (11 / 12) * 100 = 91.67%. Interpretacion: alto = mas uso de flota (mejor cobertura, posible menor holgura); bajo = subutilizacion o sobredimensionamiento."
-avg_demand_utilization_pct,83.33,Promedio de demand_utilization_pct por ruta: mean(12 valores) = 83.33%. Interpretacion: alto = mejor uso de capacidad; demasiado alto puede reducir resiliencia operativa.
-p95_demand_utilization_pct,100.00,Percentil 95 de demand_utilization_pct por ruta: p95(12 valores) = 100.00%. Interpretacion: alto = cola de rutas casi saturadas; bajo = menor riesgo de saturacion en escenarios pico.
-duration_balance_cv,0.427347,CV de modeled_route_duration = std(duraciones) / mean(duraciones) = 0.427347. Interpretacion: bajo = rutas balanceadas; alto = desbalance entre rutas.
-demand_balance_cv,0.364417,CV de covered_demand por ruta = std(demandas) / mean(demandas) = 0.364417. Interpretacion: bajo = reparto de demanda uniforme; alto = concentracion de carga en pocas rutas.
-service_stops_balance_cv,0.364417,CV de total_service_stops por ruta = std(stops_servicio) / mean(stops_servicio) = 0.364417. Interpretacion: bajo = reparto parejo de paradas; alto = carga operativa desigual.
-max_min_duration_ratio,0.000000,max(duraciones) / min(duraciones) = 74.00 / 0.00 = 0.000000. Interpretacion: cercano a 1 = buena equidad; alto = gran brecha entre ruta mas larga y mas corta.
-total_productive_time_min,959.00,"Suma de productive_time_min en todas las rutas = 959.00 min. Interpretacion: alto puede indicar mayor trabajo atendido, pero debe leerse junto a cobertura y eficiencia."
-productive_time_share_pct,162.54,(total_productive_time_min / sum(modeled_route_duration)) * 100 = (959.00 / 590.00) * 100 = 162.54%. Interpretacion: alto = mas tiempo util (drive+service); bajo = mas tiempo ocioso/espera.
-avg_distance_per_served_employee_km,11.819,total_physical_route_distance / employees_served = 590.931 / 50 = 11.819 km. Interpretacion: bajo = mejor eficiencia geografica; alto = mayor costo de traslado por atencion.
-avg_time_per_served_employee_min,11.80,sum(modeled_route_duration) / employees_served = 590.00 / 50 = 11.80 min. Interpretacion: bajo = mayor productividad por empleado servido; alto = mayor esfuerzo temporal por servicio.
-total_uncosted_distance_km,308.412,Suma de uncosted_distance_km en todas las rutas = 308.412 km. Interpretacion: bajo = menor distancia fuera de costo objetivo; alto = mas distancia real no penalizada por reglas de costo.
-employees_served,50,Valor de solve_result.total_covered_service_points = 50. Interpretacion: alto = mayor cobertura; bajo = menor nivel de servicio.
-employees_omitted,0,Conteo de solve_result.omitted_service_points = 0. Interpretacion: bajo = mejor cobertura; alto = mayor demanda insatisfecha.
-service_level_pct,100.00,(employees_served / (employees_served + employees_omitted)) * 100 = (50 / 50) * 100 = 100.00%. Interpretacion: alto = mejor calidad de servicio; bajo = cobertura insuficiente.
+section,metric,value,target,interpretation
+coverage_and_service,service_level_pct,100.00%,>= 95%,Share of employees served relative to total demand. This is the primary service coverage metric.
+coverage_and_service,weighted_service_level_pct,100.00%,>= 97%,Priority-weighted service coverage. It reflects whether the most critical demand is being served.
+coverage_and_service,employees_served,50,as high as possible,Count of employees successfully covered by the solved routes.
+coverage_and_service,employees_omitted,0,0 preferred,Count of employees left unserved. This should be minimized in a feasible plan.
+efficiency,avg_distance_per_served_employee_km,11.819,<= 20 km preferred,Average physical distance per served employee. Lower values indicate tighter geographic efficiency.
+efficiency,avg_time_per_served_employee_min,11.80,<= 20 min preferred,Average modeled time per served employee. Useful for comparing effort per worker served.
+efficiency,productive_time_share_pct,100.00%,>= 80% preferred,"Share of modeled route time spent in productive activity (drive + service), versus waiting or slack."
+efficiency,total_uncosted_distance_km,308.412,as low as possible,Distance outside the objective cost logic. This helps reveal travel that is not fully captured by the scoring model.
+load_balance_and_fleet,fleet_vehicles_total,12,scenario-defined,Total vehicles available for the current scenario.
+load_balance_and_fleet,fleet_vehicles_used,11,as needed,Number of routes that are actually active in the solution.
+load_balance_and_fleet,fleet_utilization_pct,91.67%,60%-90% preferred,Share of the available fleet that is actively used. Good utilization reduces idle capacity without overstretching the fleet.
+load_balance_and_fleet,avg_demand_utilization_pct,90.91%,60%-85% preferred,Average demand utilization across routes. Values near saturation indicate heavy consolidation but increased risk of tight routing.
+load_balance_and_fleet,p95_demand_utilization_pct,100.00%,<= 100% preferred,P95 demand utilization across routes. This identifies the most stressed routes in the plan.
+load_balance_and_fleet,duration_balance_cv,0.289954,<= 0.50 preferred,Coefficient of variation for route durations. Lower values indicate more balanced route load across vehicles.
+load_balance_and_fleet,max_min_duration_ratio,3.363636,close to 1.0 preferred,Max/min duration ratio across routes. A high value means uneven routing effort among vehicles.
+risk_and_exceptions,average_stop_wait_min,0.000,<= 5 min preferred,Average waiting time at stops. Higher values indicate operational friction or schedule slack.

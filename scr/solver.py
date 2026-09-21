@@ -548,7 +548,7 @@ def solve_vrp(problem: SolverInput) -> SolveResult:
     search_wall_time_ms = routing.solver().WallTime()
     solver_branches = routing.solver().Branches()
     solver_failures = routing.solver().Failures()
-    solver_status_detail = str(routing.status())
+    solver_status_detail = _ROUTING_STATUS_TO_SOLVE_STATUS.get(routing.status(), SolveStatus.FAILED).value
 
     if not solution:
         infeasibility_hints = _build_infeasibility_hints(problem, time_window_duration)
