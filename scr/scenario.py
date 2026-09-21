@@ -118,6 +118,9 @@ def _employee_priority(node_id: int, reference_coord: tuple[float, float], coord
 
 
 def build_scenario(settings: Settings) -> Scenario:
+    if settings.average_speed_kmh <= 0:
+        raise ValueError("AVERAGE_SPEED_KMH must be greater than 0.")
+
     random.seed(settings.random_seed)
     area_min_x = settings.area_min_x
     area_max_x = settings.area_max_x
