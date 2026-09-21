@@ -1,7 +1,7 @@
 **SUMMARY**,,,
 status,FEASIBLE,Final solver feasibility status.,Direct value from OR-Tools solve status.
 total_objective_value,287271,Final objective value for the selected solution.,Directly read from solution.ObjectiveValue().
-search_time_ms,30014,Wall-clock search time in milliseconds.,Directly reported by solver wall time counter.
+search_time_ms,30021,Wall-clock search time in milliseconds.,Directly reported by solver wall time counter.
 total_employees,50,Total number of employees in scenario demand.,Input configuration value from settings.
 served_employees_total,50,Total employees served by all routes.,Sum of covered demand across solved routes.
 omitted_employees_total,0,Total employees not served.,Count of omitted service points in solve result.
@@ -39,8 +39,8 @@ objective_travel_cost,286678,Objective contribution from travel arcs.,Sum of rou
 objective_omission_penalty,0,Objective contribution from omission penalties.,Same value as omitted_penalty_total.
 objective_unattributed_cost,593,Objective remainder not explained by travel+omission terms.,total_objective_value - objective_travel_cost - objective_omission_penalty.
 solver_status_detail,FEASIBLE,Detailed textual solver status.,Status mapped from solver response.
-solver_branches,3064,Branching decisions explored by the solver.,Direct branch counter from OR-Tools.
-solver_failures,1060,Failed nodes/backtracks during search.,Direct failure counter from OR-Tools.
+solver_branches,3493,Branching decisions explored by the solver.,Direct branch counter from OR-Tools.
+solver_failures,1212,Failed nodes/backtracks during search.,Direct failure counter from OR-Tools.
 
 **FLEET AGGREGATES BY ROUTE**,,,
 modeled_duration_min_avg,49.42,Average value of modeled route duration (minutes),Mean across all solved routes.
