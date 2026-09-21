@@ -16,3 +16,13 @@ total_uncosted_distance_km,285.199,Suma de uncosted_distance_km en todas las rut
 employees_served,50,Valor de solve_result.total_covered_service_points = 50. Interpretacion: alto = mayor cobertura; bajo = menor nivel de servicio.
 employees_omitted,0,Conteo de solve_result.omitted_service_points = 0. Interpretacion: bajo = mejor cobertura; alto = mayor demanda insatisfecha.
 service_level_pct,100.00,(employees_served / (employees_served + employees_omitted)) * 100 = (50 / 50) * 100 = 100.00%. Interpretacion: alto = mejor calidad de servicio; bajo = cobertura insuficiente.
+
+kpi_status_flags
+kpi,value,status,rule,description
+service_level_pct,100.00,GREEN,GREEN >= 98; AMBER >= 90; RED < 90,"Cobertura efectiva del servicio, expresada como % de empleados atendidos."
+weighted_service_level_pct,100.00,GREEN,GREEN >= 99; AMBER >= 95; RED < 95,Cobertura ponderada por prioridad del empleado atendido.
+fleet_utilization_pct,91.67,AMBER,"GREEN in [60, 90]; AMBER in [40, 100]; RED outside [40, 100]",Porcentaje de vehículos activos respecto al total disponible.
+workload_balance_duration_std,22.314,AMBER,GREEN <= 12 min; AMBER <= 25 min; RED > 25 min,Desviación estándar de la duración entre rutas para evaluar equilibrio de carga.
+average_stop_wait_min,0.000,GREEN,GREEN <= 5 min; AMBER <= 15 min; RED > 15 min,Tiempo promedio de espera en las paradas dentro de la ruta.
+km_per_served_employee,11.438,GREEN,GREEN <= 20 km; AMBER <= 30 km; RED > 30 km,Distancia física media por empleado atendido.
+min_per_served_employee,11.860,GREEN,GREEN <= 30 min; AMBER <= 45 min; RED > 45 min,Tiempo medio por empleado atendido.

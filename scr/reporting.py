@@ -71,11 +71,38 @@ def _coefficient_of_variation(values: list[float]) -> float:
     return _stddev_population(values) / mean_value
 
 
-def _write_aggregate_rows(writer: Any, label: str, values: list[float], decimals: int = 3) -> None:
-    writer.writerow([f"{label}_avg", f"{_mean(values):.{decimals}f}"])
-    writer.writerow([f"{label}_p95", f"{_percentile(values, 0.95):.{decimals}f}"])
-    writer.writerow([f"{label}_min", f"{(min(values) if values else 0.0):.{decimals}f}"])
-    writer.writerow([f"{label}_max", f"{(max(values) if values else 0.0):.{decimals}f}"])
+def _write_aggregate_rows(
+    writer: Any,
+    label: str,
+    values: list[float],
+    decimals: int = 3,
+    metric_description: str = "",
+) -> None:
+    description = metric_description or f"Route-level aggregate metric for {label}."
+    writer.writerow([
+        f"{label}_avg",
+        f"{_mean(values):.{decimals}f}",
+        f"Average value of {description.lower()}",
+        "Mean across all solved routes.",
+    ])
+    writer.writerow([
+        f"{label}_p95",
+        f"{_percentile(values, 0.95):.{decimals}f}",
+        f"95th percentile value of {description.lower()}",
+        "Percentile 95 across all solved routes.",
+    ])
+    writer.writerow([
+        f"{label}_min",
+        f"{(min(values) if values else 0.0):.{decimals}f}",
+        f"Minimum value of {description.lower()}",
+        "Minimum across all solved routes.",
+    ])
+    writer.writerow([
+        f"{label}_max",
+        f"{(max(values) if values else 0.0):.{decimals}f}",
+        f"Maximum value of {description.lower()}",
+        "Maximum across all solved routes.",
+    ])
 
 
 def _semaphore_high_is_good(value: float, green_min: float, amber_min: float) -> str:
@@ -404,68 +431,82 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
 
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["**SUMMARY**", ""])
-        writer.writerow(["status", solve_result.status])
-        writer.writerow(["total_objective_value", solve_result.total_objective_value])
-        writer.writerow(["search_time_ms", solve_result.search_wall_time_ms])
-        writer.writerow(["total_employees", settings.number_of_employees])
-        writer.writerow(["served_employees_total", solve_result.total_covered_service_points])
-        writer.writerow(["omitted_employees_total", len(solve_result.omitted_service_points)])
-        writer.writerow(["service_level_pct", f"{solve_result.service_level_pct:.2f}"])
-        writer.writerow(["weighted_service_level_pct", f"{solve_result.weighted_service_level_pct:.2f}"])
-        writer.writerow(["served_priority_weight", solve_result.served_priority_weight])
-        writer.writerow(["total_priority_weight", solve_result.total_priority_weight])
-        writer.writerow(["accounted_distance_total_km", f"{solve_result.total_modeled_route_distance:.3f}"])
-        writer.writerow(["physical_distance_total_km", f"{solve_result.total_physical_route_distance:.3f}"])
-        writer.writerow(["deadhead_distance_km", f"{solve_result.deadhead_distance_km:.3f}"])
-        writer.writerow(["total_drive_min", solve_result.total_drive_min])
-        writer.writerow(["total_wait_min", solve_result.total_wait_min])
-        writer.writerow(["total_service_min", solve_result.total_service_min])
-        writer.writerow(["average_stop_wait_min", f"{solve_result.average_stop_wait_min:.3f}"])
-        writer.writerow(["p95_stop_wait_min", f"{solve_result.p95_stop_wait_min:.3f}"])
-        writer.writerow(["km_per_served_employee", f"{solve_result.km_per_served_employee:.3f}"])
-        writer.writerow(["min_per_served_employee", f"{solve_result.min_per_served_employee:.3f}"])
-        writer.writerow(["fleet_utilization_pct", f"{solve_result.fleet_utilization_pct:.2f}"])
-        writer.writerow(["workload_balance_demand_std", f"{solve_result.workload_balance_demand_std:.6f}"])
-        writer.writerow(["workload_balance_distance_std", f"{solve_result.workload_balance_distance_std:.6f}"])
-        writer.writerow(["workload_balance_duration_std", f"{solve_result.workload_balance_duration_std:.6f}"])
-        writer.writerow(["max_route_duration_min", solve_result.max_route_duration_min])
-        writer.writerow(["min_route_duration_min", solve_result.min_route_duration_min])
-        writer.writerow(["spread_route_duration_min", solve_result.spread_route_duration_min])
-        writer.writerow(["co2_kg_per_km", f"{solve_result.co2_kg_per_km:.6f}"])
-        writer.writerow(["estimated_co2_kg", f"{solve_result.estimated_co2_kg:.3f}"])
-        writer.writerow(["omitted_low_priority_count", solve_result.omitted_low_priority_count])
-        writer.writerow(["omitted_medium_priority_count", solve_result.omitted_medium_priority_count])
-        writer.writerow(["omitted_high_priority_count", solve_result.omitted_high_priority_count])
-        writer.writerow(["omitted_penalty_low", solve_result.omitted_penalty_low])
-        writer.writerow(["omitted_penalty_medium", solve_result.omitted_penalty_medium])
-        writer.writerow(["omitted_penalty_high", solve_result.omitted_penalty_high])
-        writer.writerow(["omitted_penalty_total", solve_result.omitted_penalty_total])
-        writer.writerow(["objective_travel_cost", solve_result.objective_travel_cost])
-        writer.writerow(["objective_omission_penalty", solve_result.objective_omission_penalty])
-        writer.writerow(["objective_unattributed_cost", solve_result.objective_unattributed_cost])
-        writer.writerow(["solver_status_detail", solve_result.solver_status_detail])
-        writer.writerow(["solver_branches", solve_result.solver_branches])
-        writer.writerow(["solver_failures", solve_result.solver_failures])
+        writer.writerow(["**SUMMARY**", "", "", ""])
+
+        def write_summary_metric(field: str, value: object, description: str, calculation: str) -> None:
+            writer.writerow([field, value, description, calculation])
+
+        write_summary_metric("status", solve_result.status, "Final solver feasibility status.", "Direct value from OR-Tools solve status.")
+        write_summary_metric("total_objective_value", solve_result.total_objective_value, "Final objective value for the selected solution.", "Directly read from solution.ObjectiveValue().")
+        write_summary_metric("search_time_ms", solve_result.search_wall_time_ms, "Wall-clock search time in milliseconds.", "Directly reported by solver wall time counter.")
+        write_summary_metric("total_employees", settings.number_of_employees, "Total number of employees in scenario demand.", "Input configuration value from settings.")
+        write_summary_metric("served_employees_total", solve_result.total_covered_service_points, "Total employees served by all routes.", "Sum of covered demand across solved routes.")
+        write_summary_metric("omitted_employees_total", len(solve_result.omitted_service_points), "Total employees not served.", "Count of omitted service points in solve result.")
+        write_summary_metric("service_level_pct", f"{solve_result.service_level_pct:.2f}", "Share of served employees over all employees (%).", "served_employees_total / total_service_points * 100.")
+        write_summary_metric("weighted_service_level_pct", f"{solve_result.weighted_service_level_pct:.2f}", "Priority-weighted service level (%).", "served_priority_weight / total_priority_weight * 100.")
+        write_summary_metric("served_priority_weight", solve_result.served_priority_weight, "Priority weight effectively served.", "total_priority_weight minus omitted priority weight.")
+        write_summary_metric("total_priority_weight", solve_result.total_priority_weight, "Total available priority weight.", "Sum of priority multipliers for all service points.")
+        write_summary_metric("accounted_distance_total_km", f"{solve_result.total_modeled_route_distance:.3f}", "Distance counted by configured modeling rules (km).", "Sum of modeled route distance (includes/excludes extreme legs by COUNT_FIRST/LAST_LEG_COST flags).")
+        write_summary_metric("physical_distance_total_km", f"{solve_result.total_physical_route_distance:.3f}", "Real traveled distance across all arcs (km).", "Sum of physical arc distances for all solved routes.")
+        write_summary_metric("deadhead_distance_km", f"{solve_result.deadhead_distance_km:.3f}", "Distance on start/end repositioning legs (km).", "Sum of physical arc distances where arc leaves START or reaches END.")
+        write_summary_metric("total_drive_min", solve_result.total_drive_min, "Total driving minutes.", "Sum of reported leg travel time across routes.")
+        write_summary_metric("total_wait_min", solve_result.total_wait_min, "Total waiting minutes.", "Sum of route waiting time from schedule slack.")
+        write_summary_metric("total_service_min", solve_result.total_service_min, "Total service minutes at employee stops.", "Sum of service lag minutes across all routes.")
+        write_summary_metric("average_stop_wait_min", f"{solve_result.average_stop_wait_min:.3f}", "Average waiting minutes per stop.", "Mean of all stop wait minutes.")
+        write_summary_metric("p95_stop_wait_min", f"{solve_result.p95_stop_wait_min:.3f}", "95th percentile of stop waiting minutes.", "Percentile 95 over all stop wait minutes.")
+        write_summary_metric("km_per_served_employee", f"{solve_result.km_per_served_employee:.3f}", "Average physical km per served employee.", "physical_distance_total_km / served_employees_total.")
+        write_summary_metric("min_per_served_employee", f"{solve_result.min_per_served_employee:.3f}", "Average modeled route minutes per served employee.", "Sum of route durations / served_employees_total.")
+        write_summary_metric("fleet_utilization_pct", f"{solve_result.fleet_utilization_pct:.2f}", "Percent of fleet that serves at least one employee.", "vehicles_used / total_vehicles * 100.")
+        write_summary_metric("workload_balance_demand_std", f"{solve_result.workload_balance_demand_std:.6f}", "Workload dispersion by served demand.", "Population standard deviation of route demands.")
+        write_summary_metric("workload_balance_distance_std", f"{solve_result.workload_balance_distance_std:.6f}", "Workload dispersion by physical distance.", "Population standard deviation of route physical distances.")
+        write_summary_metric("workload_balance_duration_std", f"{solve_result.workload_balance_duration_std:.6f}", "Workload dispersion by route duration.", "Population standard deviation of modeled route durations.")
+        write_summary_metric("max_route_duration_min", solve_result.max_route_duration_min, "Maximum modeled route duration.", "Maximum value among route durations.")
+        write_summary_metric("min_route_duration_min", solve_result.min_route_duration_min, "Minimum modeled route duration.", "Minimum value among route durations.")
+        write_summary_metric("spread_route_duration_min", solve_result.spread_route_duration_min, "Difference between longest and shortest route duration.", "max_route_duration_min - min_route_duration_min.")
+        write_summary_metric("co2_kg_per_km", f"{solve_result.co2_kg_per_km:.6f}", "Emission factor used for CO2 estimation.", "Scenario input parameter (kg of CO2 per km).")
+        write_summary_metric("estimated_co2_kg", f"{solve_result.estimated_co2_kg:.3f}", "Estimated total CO2 emissions.", "physical_distance_total_km * co2_kg_per_km.")
+        write_summary_metric("omitted_low_priority_count", solve_result.omitted_low_priority_count, "Number of omitted low-priority employees.", "Count omitted service points with LOW priority.")
+        write_summary_metric("omitted_medium_priority_count", solve_result.omitted_medium_priority_count, "Number of omitted medium-priority employees.", "Count omitted service points with MEDIUM priority.")
+        write_summary_metric("omitted_high_priority_count", solve_result.omitted_high_priority_count, "Number of omitted high-priority employees.", "Count omitted service points with HIGH priority.")
+        write_summary_metric("omitted_penalty_low", solve_result.omitted_penalty_low, "Objective penalty from omitted low-priority employees.", "Sum of omission penalties for LOW-priority omitted nodes.")
+        write_summary_metric("omitted_penalty_medium", solve_result.omitted_penalty_medium, "Objective penalty from omitted medium-priority employees.", "Sum of omission penalties for MEDIUM-priority omitted nodes.")
+        write_summary_metric("omitted_penalty_high", solve_result.omitted_penalty_high, "Objective penalty from omitted high-priority employees.", "Sum of omission penalties for HIGH-priority omitted nodes.")
+        write_summary_metric("omitted_penalty_total", solve_result.omitted_penalty_total, "Total objective penalty from all omitted employees.", "omitted_penalty_low + omitted_penalty_medium + omitted_penalty_high.")
+        write_summary_metric("objective_travel_cost", solve_result.objective_travel_cost, "Objective contribution from travel arcs.", "Sum of route_objective_contribution across routes.")
+        write_summary_metric("objective_omission_penalty", solve_result.objective_omission_penalty, "Objective contribution from omission penalties.", "Same value as omitted_penalty_total.")
+        write_summary_metric("objective_unattributed_cost", solve_result.objective_unattributed_cost, "Objective remainder not explained by travel+omission terms.", "total_objective_value - objective_travel_cost - objective_omission_penalty.")
+        write_summary_metric("solver_status_detail", solve_result.solver_status_detail, "Detailed textual solver status.", "Status mapped from solver response.")
+        write_summary_metric("solver_branches", solve_result.solver_branches, "Branching decisions explored by the solver.", "Direct branch counter from OR-Tools.")
+        write_summary_metric("solver_failures", solve_result.solver_failures, "Failed nodes/backtracks during search.", "Direct failure counter from OR-Tools.")
         writer.writerow([])
-        writer.writerow(["**FLEET AGGREGATES BY ROUTE**"])
-        _write_aggregate_rows(writer, "modeled_duration_min", modeled_route_duration_values, decimals=2)
-        _write_aggregate_rows(writer, "drive_time_min", total_drive_time_values, decimals=2)
-        _write_aggregate_rows(writer, "wait_time_min", total_wait_time_values, decimals=2)
-        _write_aggregate_rows(writer, "service_time_min", total_service_time_values, decimals=2)
-        _write_aggregate_rows(writer, "productive_time_min", productive_time_values, decimals=2)
-        _write_aggregate_rows(writer, "demand_utilization_pct", demand_utilization_values, decimals=2)
-        _write_aggregate_rows(writer, "distance_efficiency_ratio", distance_efficiency_values, decimals=6)
-        _write_aggregate_rows(writer, "total_service_stops", total_service_stops_values, decimals=2)
-        _write_aggregate_rows(writer, "route_objective_contribution", route_objective_contribution_values, decimals=2)
+        writer.writerow(["**FLEET AGGREGATES BY ROUTE**", "", "", ""])
+        _write_aggregate_rows(writer, "modeled_duration_min", modeled_route_duration_values, decimals=2, metric_description="modeled route duration (minutes)")
+        _write_aggregate_rows(writer, "drive_time_min", total_drive_time_values, decimals=2, metric_description="route drive time (minutes)")
+        _write_aggregate_rows(writer, "wait_time_min", total_wait_time_values, decimals=2, metric_description="route wait time (minutes)")
+        _write_aggregate_rows(writer, "service_time_min", total_service_time_values, decimals=2, metric_description="route service time (minutes)")
+        _write_aggregate_rows(writer, "productive_time_min", productive_time_values, decimals=2, metric_description="route productive time (drive + service, minutes)")
+        _write_aggregate_rows(writer, "demand_utilization_pct", demand_utilization_values, decimals=2, metric_description="vehicle demand utilization (%)")
+        _write_aggregate_rows(writer, "distance_efficiency_ratio", distance_efficiency_values, decimals=6, metric_description="route distance efficiency ratio (accounted/physical)")
+        _write_aggregate_rows(writer, "total_service_stops", total_service_stops_values, decimals=2, metric_description="number of serviced stops per route")
+        _write_aggregate_rows(writer, "route_objective_contribution", route_objective_contribution_values, decimals=2, metric_description="per-route contribution to objective value")
+
         writer.writerow([])
-        writer.writerow(["**INFEASIBILITY HINTS**"])
+        writer.writerow(["**INFEASIBILITY HINTS**", "", "", ""])
         if solve_result.infeasibility_hints:
-            writer.writerow(["hint"])
-            for hint in solve_result.infeasibility_hints:
-                writer.writerow([hint])
+            for hint_index, hint in enumerate(solve_result.infeasibility_hints, start=1):
+                write_summary_metric(
+                    f"hint_{hint_index}",
+                    hint,
+                    "Potential infeasibility cause or diagnostic note.",
+                    "Generated by post-solve diagnostics and collected in solve_result.infeasibility_hints.",
+                )
         else:
-            writer.writerow(["none"])
+            write_summary_metric(
+                "hints_status",
+                "none",
+                "No infeasibility hints were produced.",
+                "The solve_result.infeasibility_hints list is empty.",
+            )
     print(f"Resumen de solucion guardado en: {csv_path}")
 
 
