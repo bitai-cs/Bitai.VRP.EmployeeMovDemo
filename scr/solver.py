@@ -4,10 +4,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from ortools.constraint_solver import pywrapcp, routing_enums_pb2
-
 from enums import ServicePointPriority
 from models import ArcMetrics, RoutingArcCostType, SolverInput
+from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 
 PRIORITY_PENALTY_MULTIPLIERS: dict[ServicePointPriority, int] = {
     ServicePointPriority.LOW: 1,
