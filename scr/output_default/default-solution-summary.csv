@@ -1,7 +1,7 @@
 **SUMMARY**,,,
 status,FEASIBLE,Final solver feasibility status.,Direct value from OR-Tools solve status.
 total_objective_value,287271,Final objective value for the selected solution.,Directly read from solution.ObjectiveValue().
-search_time_ms,30009,Wall-clock search time in milliseconds.,Directly reported by solver wall time counter.
+search_time_ms,30007,Wall-clock search time in milliseconds.,Directly reported by solver wall time counter.
 total_employees,50,Total number of employees in scenario demand.,Input configuration value from settings.
 served_employees_total,50,Total employees served by all routes.,Sum of covered demand across solved routes.
 omitted_employees_total,0,Total employees not served.,Count of omitted service points in solve result.
@@ -20,5 +20,5 @@ omitted_low_priority_count,0,Number of omitted low-priority employees.,Count omi
 omitted_medium_priority_count,0,Number of omitted medium-priority employees.,Count omitted service points with MEDIUM priority.
 omitted_high_priority_count,0,Number of omitted high-priority employees.,Count omitted service points with HIGH priority.
 solver_status_detail,ROUTING_SUCCESS,Detailed solver status.,Mapped solver status name.
-solver_branches,6311,Branching decisions explored by the solver.,Direct branch counter from OR-Tools.
-solver_failures,2163,Failed nodes/backtracks during search.,Direct failure counter from OR-Tools.
+solver_branches,5345,Branching decisions explored by the solver.,Direct branch counter from OR-Tools.
+solver_failures,1835,Failed nodes/backtracks during search.,Direct failure counter from OR-Tools.

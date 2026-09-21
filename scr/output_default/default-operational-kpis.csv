@@ -28,5 +28,5 @@ sustainability,estimated_co2_kg,109.800,as low as possible,Estimated total CO2 e
 objective_diagnostics,objective_travel_cost,286678,contextual,Objective contribution from travel arcs.
 objective_diagnostics,objective_omission_penalty,0,contextual,Objective contribution from omitted employees.
 objective_diagnostics,objective_unattributed_cost,593,close to 0 preferred,Objective remainder not explained by travel and omission terms.
-objective_diagnostics,solver_branches,6311,contextual,Branching decisions explored by the solver.
-objective_diagnostics,solver_failures,2163,contextual,Backtracks/failures reported during search.
+objective_diagnostics,solver_branches,5345,contextual,Branching decisions explored by the solver.
+objective_diagnostics,solver_failures,1835,contextual,Backtracks/failures reported during search.
