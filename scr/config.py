@@ -254,7 +254,7 @@ def _parse_bool(raw: Any) -> bool:
         return True
     if text in {"0", "false", "no", "n"}:
         return False
-    raise ValueError(f"Valor booleano invalido: {raw!r}")
+    raise ValueError(f"Invalid boolean value: {raw!r}")
 
 
 def _parse_json_value(raw: Any) -> Any:
@@ -262,7 +262,7 @@ def _parse_json_value(raw: Any) -> Any:
         try:
             return json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise ValueError(f"JSON invalido: {raw!r}") from exc
+            raise ValueError(f"Invalid JSON: {raw!r}") from exc
     return raw
 
 
@@ -320,7 +320,7 @@ def load_settings(env_file: str = ".env") -> Settings:
     base_path = Path(__file__).resolve().parent
     env_path = (base_path / env_file).resolve()
     if not env_path.exists():
-        raise FileNotFoundError(f"No se encontro el archivo de configuracion: {env_path}")
+        raise FileNotFoundError(f"Configuration file not found: {env_path}")
 
     resolved = _ensure_required_values(env_path)
     file_values = dotenv_values(env_path)
@@ -335,14 +335,14 @@ def load_settings(env_file: str = ".env") -> Settings:
         try:
             resolved["CO2_KG_PER_KM"] = float(co2_raw)
         except (TypeError, ValueError) as exc:
-            raise ValueError(f"{co2_env_name} invalido: {co2_raw!r} ({exc})") from exc
+            raise ValueError(f"{co2_env_name} invalid: {co2_raw!r} ({exc})") from exc
 
     env_filename = env_path.name
     base_name = "default" if env_filename == ".env" else Path(env_filename).stem
 
     resolved["OUTPUT_DIR"] = f"./output_{base_name}"
     resolved["SCENARIO_PLOT_FILENAME"] = f"{base_name}-vrp.png"
-    resolved["ROUTE_PLOT_FILENAME_TEMPLATE"] = f"{base_name}-route-{{vehiculo}}.png"
+    resolved["ROUTE_PLOT_FILENAME_TEMPLATE"] = f"{base_name}-route-{{vehicle}}.png"
     resolved["ROUTE_DETAILS_CSV_FILENAME"] = f"{base_name}-route-details.csv"
     resolved["ROUTE_STOP_DETAILS_CSV_FILENAME"] = f"{base_name}-stop-details.csv"
     resolved["SOLUTION_SUMMARY_CSV_FILENAME"] = f"{base_name}-solution-summary.csv"
@@ -366,21 +366,21 @@ def load_settings(env_file: str = ".env") -> Settings:
     count_last_leg_time = [bool(value) for value in resolved["COUNT_LAST_LEG_TIME"]]
 
     if len(capacity_per_vehicle) != number_of_vehicles:
-        raise ValueError("UCMSME_CAPACITY_PER_VEHICLE debe tener exactamente NUMBER_OF_VEHICLES valores.")
+        raise ValueError("UCMSME_CAPACITY_PER_VEHICLE must have exactly NUMBER_OF_VEHICLES values.")
     if len(demand_per_employee) != number_of_employees:
-        raise ValueError("UCMSME_DEMAND_PER_EMPLOYEE debe tener exactamente NUMBER_OF_EMPLOYEES valores.")
+        raise ValueError("UCMSME_DEMAND_PER_EMPLOYEE must have exactly NUMBER_OF_EMPLOYEES values.")
     if len(lag_minutes_per_employee) != number_of_employees:
-        raise ValueError("UCMSME_LAG_MINUTES_PER_EMPLOYEE debe tener exactamente NUMBER_OF_EMPLOYEES valores.")
+        raise ValueError("UCMSME_LAG_MINUTES_PER_EMPLOYEE must have exactly NUMBER_OF_EMPLOYEES values.")
     if any(value < 0 for value in lag_minutes_per_employee):
-        raise ValueError("UCMSME_LAG_MINUTES_PER_EMPLOYEE no admite valores negativos.")
+        raise ValueError("UCMSME_LAG_MINUTES_PER_EMPLOYEE does not allow negative values.")
     if len(count_first_leg_cost) != number_of_vehicles:
-        raise ValueError("UCMSME_COUNT_FIRST_LEG_COST debe tener exactamente NUMBER_OF_VEHICLES valores.")
+        raise ValueError("UCMSME_COUNT_FIRST_LEG_COST must have exactly NUMBER_OF_VEHICLES values.")
     if len(count_first_leg_time) != number_of_vehicles:
-        raise ValueError("UCMSME_COUNT_FIRST_LEG_TIME debe tener exactamente NUMBER_OF_VEHICLES valores.")
+        raise ValueError("UCMSME_COUNT_FIRST_LEG_TIME must have exactly NUMBER_OF_VEHICLES values.")
     if len(count_last_leg_cost) != number_of_vehicles:
-        raise ValueError("UCMSME_COUNT_LAST_LEG_COST debe tener exactamente NUMBER_OF_VEHICLES valores.")
+        raise ValueError("UCMSME_COUNT_LAST_LEG_COST must have exactly NUMBER_OF_VEHICLES values.")
     if len(count_last_leg_time) != number_of_vehicles:
-        raise ValueError("UCMSME_COUNT_LAST_LEG_TIME debe tener exactamente NUMBER_OF_VEHICLES valores.")
+        raise ValueError("UCMSME_COUNT_LAST_LEG_TIME must have exactly NUMBER_OF_VEHICLES values.")
 
     shared_initial_depot_coord = tuple(resolved["SHARED_INITIAL_DEPOT_COORD"])
     shared_final_depot_coord = tuple(resolved["SHARED_FINAL_DEPOT_COORD"])

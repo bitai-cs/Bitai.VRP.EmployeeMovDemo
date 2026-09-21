@@ -38,7 +38,7 @@ class Scenario:
 
 def _generate_perimeter_coords(n: int, inner_area_x: tuple[float, float], inner_area_y: tuple[float, float]) -> list[tuple[float, float]]:
     if n <= 0:
-        raise ValueError(f"N_VEHICULOS ({n}) debe ser mayor que 0 para auto-distribucion por borde.")
+        raise ValueError(f"N_VEHICLES ({n}) must be greater than 0 for perimeter auto-distribution.")
 
     x_min, x_max = inner_area_x
     y_min, y_max = inner_area_y
@@ -95,7 +95,7 @@ def _build_side_points(side_point_mode: RouteDepotCoordMode, prefix: str, shared
         vehicle_labels = [f"{prefix}{i:03d}" for i in range(number_of_vehicles)]
         return perimeter_coords, vehicle_labels
     if len(specific_coords) != number_of_vehicles:
-        raise ValueError(f"COORDS_{'INICIALES' if prefix == 'DI' else 'FINALES'}_MANUAL tiene {len(specific_coords)} elementos y debe tener {number_of_vehicles}.")
+        raise ValueError(f"COORDS_{'INITIAL' if prefix == 'DI' else 'FINAL'}_MANUAL has {len(specific_coords)} elements and must have {number_of_vehicles}.")
     vehicle_labels = [f"{prefix}{i:03d}" for i in range(number_of_vehicles)]
     return list(specific_coords), vehicle_labels
 
@@ -126,7 +126,7 @@ def build_scenario(settings: Settings) -> Scenario:
     inner_area_x = (area_min_x + settings.inner_area_margin_km, area_max_x - settings.inner_area_margin_km)
     inner_area_y = (area_min_y + settings.inner_area_margin_km, area_max_y - settings.inner_area_margin_km)
     if not (inner_area_x[0] < inner_area_x[1] and inner_area_y[0] < inner_area_y[1]):
-        raise ValueError("INNER_AREA_MARGIN_KM es demasiado grande para el area definida.")
+        raise ValueError("INNER_AREA_MARGIN_KM is too large for the defined area.")
 
     initial_depot_coords, initial_depot_labels = _build_side_points(
         RouteDepotCoordMode(settings.route_initial_depot_coord_mode),

@@ -37,13 +37,13 @@ def main() -> None:
     print("VRP solving completed.")
 
     if solution.status not in HAS_SOLUTION_STATUSES:
-        print(f"No se encontro solucion factible con estos parametros! (status={solution.status})")
+        print(f"No feasible solution found with these parameters! (status={solution.status})")
         return
 
-    print("\nSolucion encontrada\n")
-    print(f"Empleados servidos: {solution.total_covered_service_points}/{settings.number_of_employees} ({len(solution.omitted_service_points)} omitidos)")
+    print("\nSolution found\n")
+    print(f"Employees served: {solution.total_covered_service_points}/{settings.number_of_employees} ({len(solution.omitted_service_points)} omitted)")
     for route in solution.solved_routes:
-        print(f"Vehiculo {route.vehicle_id}: {route.start_node_label} -> {route.end_node_label} | atendidos={route.covered_demand} | distancia={route.modeled_route_distance:.3f} km | tiempo={route.modeled_route_duration} min")
+        print(f"Vehicle {route.vehicle_id}: {route.start_node_label} -> {route.end_node_label} | served={route.covered_demand} | distance={route.modeled_route_distance:.3f} km | time={route.modeled_route_duration} min")
     write_all_outputs(settings, scenario, solution)
 
 

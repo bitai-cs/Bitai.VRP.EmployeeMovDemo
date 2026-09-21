@@ -183,12 +183,12 @@ def plot_scenario(settings: Settings, scenario: Scenario) -> None:
     plt.tight_layout()
     plt.savefig(file_path, dpi=settings.plot_dpi, bbox_inches=settings.plot_savefig_bbox)
     plt.close()
-    print(f"Escenario guardado en: {file_path}")
+    print(f"Scenario saved to: {file_path}")
 
 
 def plot_vehicle_route(settings: Settings, scenario: Scenario, vehicle_id: int, route_nodes: list[int], dropped_employees: list[int]) -> None:
     ensure_output_dir(settings.output_dir)
-    file_name = settings.route_plot_filename_template.format(vehiculo=vehicle_id)
+    file_name = settings.route_plot_filename_template.format(vehicle=vehicle_id)
     file_path = os.path.join(settings.output_dir, file_name)
     plt.figure(figsize=settings.plot_figsize)
     plt.scatter(
@@ -224,7 +224,7 @@ def plot_vehicle_route(settings: Settings, scenario: Scenario, vehicle_id: int, 
             else:
                 linestyle = "solid"
             plt.plot(rx[idx:idx + 2], ry[idx:idx + 2], color=settings.plot_route_color, linewidth=settings.plot_route_line_width, linestyle=linestyle)
-        plt.plot([], [], color=settings.plot_route_color, linewidth=settings.plot_route_line_width, linestyle="solid", label=f"Ruta vehiculo {vehicle_id}")
+        plt.plot([], [], color=settings.plot_route_color, linewidth=settings.plot_route_line_width, linestyle="solid", label=f"Vehicle route {vehicle_id}")
     plt.scatter(rx, ry, c=settings.plot_route_color, s=settings.plot_route_point_size)
     for order, node in enumerate(route_nodes):
         x, y = scenario.coord_by_node[node]
@@ -238,7 +238,7 @@ def plot_vehicle_route(settings: Settings, scenario: Scenario, vehicle_id: int, 
                 fontsize=settings.plot_small_label_fontsize,
                 color=settings.plot_employee_id_label_color,
             )
-    plt.title(f"Ruta del vehiculo {vehicle_id}")
+    plt.title(f"Vehicle {vehicle_id} route")
     plt.xlabel(settings.plot_x_label)
     plt.ylabel(settings.plot_y_label)
     plt.grid(True, linestyle=settings.plot_grid_line_style, alpha=settings.plot_grid_alpha)
@@ -249,7 +249,7 @@ def plot_vehicle_route(settings: Settings, scenario: Scenario, vehicle_id: int, 
     plt.tight_layout()
     plt.savefig(file_path, dpi=settings.plot_dpi, bbox_inches=settings.plot_savefig_bbox)
     plt.close()
-    print(f"Ruta guardada en: {file_path}")
+    print(f"Route saved to: {file_path}")
 
 
 def write_route_details_csv(settings: Settings, solve_result: SolveResult) -> None:
@@ -337,7 +337,7 @@ def write_route_details_csv(settings: Settings, solve_result: SolveResult) -> No
                 route.service_time,
                 " -> ".join(f"{stop.node_id}({stop.arrival_time})" for stop in route.stops),
             ])
-    print(f"Detalle de rutas guardado en: {csv_path}")
+    print(f"Route details saved to: {csv_path}")
 
 
 def write_stop_details_csv(settings: Settings, solve_result: SolveResult) -> None:
@@ -409,7 +409,7 @@ def write_stop_details_csv(settings: Settings, solve_result: SolveResult) -> Non
                     stop.leg_travel_minutes_from_prev,
                     f"{stop.cumulative_distance_km:.3f}",
                 ])
-    print(f"Detalle de paradas guardado en: {csv_path}")
+    print(f"Stop details saved to: {csv_path}")
 
 
 def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, scenario: Scenario) -> None:
@@ -508,7 +508,7 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
                 "No infeasibility hints were produced.",
                 "The solve_result.infeasibility_hints list is empty.",
             )
-    print(f"Resumen de solucion guardado en: {csv_path}")
+    print(f"Solution summary saved to: {csv_path}")
 
 
 def write_omitted_employees_csv(settings: Settings, solve_result: SolveResult, scenario: Scenario) -> None:
@@ -531,7 +531,7 @@ def write_omitted_employees_csv(settings: Settings, solve_result: SolveResult, s
                 x,
                 y,
             ])
-    print(f"Empleados omitidos guardados en: {csv_path}")
+    print(f"Omitted employees saved to: {csv_path}")
 
 
 def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) -> None:
@@ -703,7 +703,7 @@ def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) ->
             "Average waiting time at stops. Higher values indicate operational friction or schedule slack.",
         )
 
-    print(f"KPIs operativos guardados en: {csv_path}")
+    print(f"Operational KPIs saved to: {csv_path}")
 
 
 def write_all_outputs(settings: Settings, scenario: Scenario, solve_result: SolveResult) -> None:
