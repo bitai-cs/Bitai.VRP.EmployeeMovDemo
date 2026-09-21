@@ -1,98 +1,84 @@
-campo,valor
-estado,FEASIBLE
-valor_objetivo_total,282519
-tiempo_busqueda_ms,30010
-empleados_totales,50
-empleados_atendidos_total,50
-empleados_omitidos_total,0
-service_level_pct,100.00
-weighted_service_level_pct,100.00
-served_priority_weight,4163
-total_priority_weight,4163
-distancia_contabilizada_total_km,282.519
-distancia_fisica_total_km,590.931
-deadhead_distance_km,422.126
-lag_total_min,250
-total_drive_min,709
-total_wait_min,0
-total_service_min,250
-average_stop_wait_min,0.000
-p95_stop_wait_min,0.000
-km_per_served_employee,11.819
-min_per_served_employee,11.800
-fleet_utilization_pct,91.67
-workload_balance_demand_std,1.518406
-workload_balance_distance_std,17.687626
-workload_balance_duration_std,21.011240
-max_route_duration_min,74
-min_route_duration_min,0
-spread_route_duration_min,74
-co2_kg_per_km,0.192000
-estimated_co2_kg,113.459
-omitted_low_priority_count,0
-omitted_medium_priority_count,0
-omitted_high_priority_count,0
-omitted_penalty_low,0
-omitted_penalty_medium,0
-omitted_penalty_high,0
-omitted_penalty_total,0
-objective_travel_cost,282519
-objective_omission_penalty,0
-objective_unattributed_cost,0
-solver_status_detail,1
-solver_branches,6960
-solver_failures,2397
+**SUMMARY**,,,
+status,FEASIBLE,Final solver feasibility status.,Direct value from OR-Tools solve status.
+total_objective_value,282519,Final objective value for the selected solution.,Directly read from solution.ObjectiveValue().
+search_time_ms,30021,Wall-clock search time in milliseconds.,Directly reported by solver wall time counter.
+total_employees,50,Total number of employees in scenario demand.,Input configuration value from settings.
+served_employees_total,50,Total employees served by all routes.,Sum of covered demand across solved routes.
+omitted_employees_total,0,Total employees not served.,Count of omitted service points in solve result.
+service_level_pct,100.00,Share of served employees over all employees (%).,served_employees_total / total_service_points * 100.
+weighted_service_level_pct,100.00,Priority-weighted service level (%).,served_priority_weight / total_priority_weight * 100.
+served_priority_weight,4163,Priority weight effectively served.,total_priority_weight minus omitted priority weight.
+total_priority_weight,4163,Total available priority weight.,Sum of priority multipliers for all service points.
+accounted_distance_total_km,282.519,Distance counted by configured modeling rules (km).,Sum of modeled route distance (includes/excludes extreme legs by COUNT_FIRST/LAST_LEG_COST flags).
+physical_distance_total_km,590.931,Real traveled distance across all arcs (km).,Sum of physical arc distances for all solved routes.
+deadhead_distance_km,422.126,Distance on start/end repositioning legs (km).,Sum of physical arc distances where arc leaves START or reaches END.
+total_drive_min,340,Total driving minutes.,Sum of reported leg travel time across routes.
+total_wait_min,0,Total waiting minutes.,Sum of route waiting time from schedule slack.
+total_service_min,250,Total service minutes at employee stops.,Sum of service lag minutes across all routes.
+average_stop_wait_min,0.000,Average waiting minutes per stop.,Mean of all stop wait minutes.
+p95_stop_wait_min,0.000,95th percentile of stop waiting minutes.,Percentile 95 over all stop wait minutes.
+km_per_served_employee,11.819,Average physical km per served employee.,physical_distance_total_km / served_employees_total.
+min_per_served_employee,11.800,Average modeled route minutes per served employee.,Sum of route durations / served_employees_total.
+fleet_utilization_pct,91.67,Percent of fleet that serves at least one employee.,vehicles_used / total_vehicles * 100.
+workload_balance_demand_std,1.518406,Workload dispersion by served demand.,Population standard deviation of route demands.
+workload_balance_distance_std,17.687626,Workload dispersion by physical distance.,Population standard deviation of route physical distances.
+workload_balance_duration_std,21.011240,Workload dispersion by route duration.,Population standard deviation of modeled route durations.
+max_route_duration_min,74,Maximum modeled route duration.,Maximum value among route durations.
+min_route_duration_min,0,Minimum modeled route duration.,Minimum value among route durations.
+spread_route_duration_min,74,Difference between longest and shortest route duration.,max_route_duration_min - min_route_duration_min.
+co2_kg_per_km,0.192000,Emission factor used for CO2 estimation.,Scenario input parameter (kg of CO2 per km).
+estimated_co2_kg,113.459,Estimated total CO2 emissions.,physical_distance_total_km * co2_kg_per_km.
+omitted_low_priority_count,0,Number of omitted low-priority employees.,Count omitted service points with LOW priority.
+omitted_medium_priority_count,0,Number of omitted medium-priority employees.,Count omitted service points with MEDIUM priority.
+omitted_high_priority_count,0,Number of omitted high-priority employees.,Count omitted service points with HIGH priority.
+omitted_penalty_low,0,Objective penalty from omitted low-priority employees.,Sum of omission penalties for LOW-priority omitted nodes.
+omitted_penalty_medium,0,Objective penalty from omitted medium-priority employees.,Sum of omission penalties for MEDIUM-priority omitted nodes.
+omitted_penalty_high,0,Objective penalty from omitted high-priority employees.,Sum of omission penalties for HIGH-priority omitted nodes.
+omitted_penalty_total,0,Total objective penalty from all omitted employees.,omitted_penalty_low + omitted_penalty_medium + omitted_penalty_high.
+objective_travel_cost,282519,Objective contribution from travel arcs.,Sum of route_objective_contribution across routes.
+objective_omission_penalty,0,Objective contribution from omission penalties.,Same value as omitted_penalty_total.
+objective_unattributed_cost,0,Objective remainder not explained by travel+omission terms.,total_objective_value - objective_travel_cost - objective_omission_penalty.
+solver_status_detail,FEASIBLE,Detailed textual solver status.,Status mapped from solver response.
+solver_branches,6267,Branching decisions explored by the solver.,Direct branch counter from OR-Tools.
+solver_failures,2147,Failed nodes/backtracks during search.,Direct failure counter from OR-Tools.
 
-agregados_flotilla_por_ruta
-duracion_modelada_min_avg,49.17
-duracion_modelada_min_p95,72.90
-duracion_modelada_min_min,0.00
-duracion_modelada_min_max,74.00
-drive_time_min_avg,59.08
-drive_time_min_p95,86.70
-drive_time_min_min,18.00
-drive_time_min_max,90.00
-wait_time_min_avg,0.00
-wait_time_min_p95,0.00
-wait_time_min_min,0.00
-wait_time_min_max,0.00
-service_time_min_avg,20.83
-service_time_min_p95,25.00
-service_time_min_min,0.00
-service_time_min_max,25.00
-productive_time_min_avg,79.92
-productive_time_min_p95,111.70
-productive_time_min_min,18.00
-productive_time_min_max,115.00
-demand_utilization_pct_avg,83.33
-demand_utilization_pct_p95,100.00
-demand_utilization_pct_min,0.00
-demand_utilization_pct_max,100.00
-distance_efficiency_ratio_avg,0.455219
-distance_efficiency_ratio_p95,0.693935
-distance_efficiency_ratio_min,0.000000
-distance_efficiency_ratio_max,0.838971
-total_service_stops_avg,4.17
-total_service_stops_p95,5.00
-total_service_stops_min,0.00
-total_service_stops_max,5.00
-route_objective_contribution_avg,23543.25
-route_objective_contribution_p95,40220.50
-route_objective_contribution_min,0.00
-route_objective_contribution_max,40633.00
+**FLEET AGGREGATES BY ROUTE**,,,
+modeled_duration_min_avg,49.17,Average value of modeled route duration (minutes),Mean across all solved routes.
+modeled_duration_min_p95,72.90,95th percentile value of modeled route duration (minutes),Percentile 95 across all solved routes.
+modeled_duration_min_min,0.00,Minimum value of modeled route duration (minutes),Minimum across all solved routes.
+modeled_duration_min_max,74.00,Maximum value of modeled route duration (minutes),Maximum across all solved routes.
+drive_time_min_avg,28.33,Average value of route drive time (minutes),Mean across all solved routes.
+drive_time_min_p95,47.90,95th percentile value of route drive time (minutes),Percentile 95 across all solved routes.
+drive_time_min_min,0.00,Minimum value of route drive time (minutes),Minimum across all solved routes.
+drive_time_min_max,49.00,Maximum value of route drive time (minutes),Maximum across all solved routes.
+wait_time_min_avg,0.00,Average value of route wait time (minutes),Mean across all solved routes.
+wait_time_min_p95,0.00,95th percentile value of route wait time (minutes),Percentile 95 across all solved routes.
+wait_time_min_min,0.00,Minimum value of route wait time (minutes),Minimum across all solved routes.
+wait_time_min_max,0.00,Maximum value of route wait time (minutes),Maximum across all solved routes.
+service_time_min_avg,20.83,Average value of route service time (minutes),Mean across all solved routes.
+service_time_min_p95,25.00,95th percentile value of route service time (minutes),Percentile 95 across all solved routes.
+service_time_min_min,0.00,Minimum value of route service time (minutes),Minimum across all solved routes.
+service_time_min_max,25.00,Maximum value of route service time (minutes),Maximum across all solved routes.
+productive_time_min_avg,49.17,"Average value of route productive time (drive + service, minutes)",Mean across all solved routes.
+productive_time_min_p95,72.90,"95th percentile value of route productive time (drive + service, minutes)",Percentile 95 across all solved routes.
+productive_time_min_min,0.00,"Minimum value of route productive time (drive + service, minutes)",Minimum across all solved routes.
+productive_time_min_max,74.00,"Maximum value of route productive time (drive + service, minutes)",Maximum across all solved routes.
+demand_utilization_pct_avg,83.33,Average value of vehicle demand utilization (%),Mean across all solved routes.
+demand_utilization_pct_p95,100.00,95th percentile value of vehicle demand utilization (%),Percentile 95 across all solved routes.
+demand_utilization_pct_min,0.00,Minimum value of vehicle demand utilization (%),Minimum across all solved routes.
+demand_utilization_pct_max,100.00,Maximum value of vehicle demand utilization (%),Maximum across all solved routes.
+distance_efficiency_ratio_avg,0.455219,Average value of route distance efficiency ratio (accounted/physical),Mean across all solved routes.
+distance_efficiency_ratio_p95,0.693935,95th percentile value of route distance efficiency ratio (accounted/physical),Percentile 95 across all solved routes.
+distance_efficiency_ratio_min,0.000000,Minimum value of route distance efficiency ratio (accounted/physical),Minimum across all solved routes.
+distance_efficiency_ratio_max,0.838971,Maximum value of route distance efficiency ratio (accounted/physical),Maximum across all solved routes.
+total_service_stops_avg,4.17,Average value of number of serviced stops per route,Mean across all solved routes.
+total_service_stops_p95,5.00,95th percentile value of number of serviced stops per route,Percentile 95 across all solved routes.
+total_service_stops_min,0.00,Minimum value of number of serviced stops per route,Minimum across all solved routes.
+total_service_stops_max,5.00,Maximum value of number of serviced stops per route,Maximum across all solved routes.
+route_objective_contribution_avg,23543.25,Average value of per-route contribution to objective value,Mean across all solved routes.
+route_objective_contribution_p95,40220.50,95th percentile value of per-route contribution to objective value,Percentile 95 across all solved routes.
+route_objective_contribution_min,0.00,Minimum value of per-route contribution to objective value,Minimum across all solved routes.
+route_objective_contribution_max,40633.00,Maximum value of per-route contribution to objective value,Maximum across all solved routes.
 
-kpi_semaforos
-kpi,value,status,rule
-service_level_pct,100.00,GREEN,GREEN >= 98; AMBER >= 90; RED < 90
-weighted_service_level_pct,100.00,GREEN,GREEN >= 99; AMBER >= 95; RED < 95
-fleet_utilization_pct,91.67,AMBER,"GREEN in [60, 90]; AMBER in [40, 100]; RED outside [40, 100]"
-workload_balance_duration_std,21.011,AMBER,GREEN <= 12 min; AMBER <= 25 min; RED > 25 min
-average_stop_wait_min,0.000,GREEN,GREEN <= 5 min; AMBER <= 15 min; RED > 15 min
-km_per_served_employee,11.819,GREEN,GREEN <= 20 km; AMBER <= 30 km; RED > 30 km
-min_per_served_employee,11.800,GREEN,GREEN <= 30 min; AMBER <= 45 min; RED > 45 min
-
-infeasibility_hints
-none
-
-empleados_no_servidos
-empleado_id,prioridad,distancia_referencia_km,x_km,y_km
+**INFEASIBILITY HINTS**,,,
+hints_status,none,No infeasibility hints were produced.,The solve_result.infeasibility_hints list is empty.
