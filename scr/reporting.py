@@ -476,7 +476,7 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
         write_summary_metric("objective_travel_cost", solve_result.objective_travel_cost, "Objective contribution from travel arcs.", "Sum of route_objective_contribution across routes.")
         write_summary_metric("objective_omission_penalty", solve_result.objective_omission_penalty, "Objective contribution from omission penalties.", "Same value as omitted_penalty_total.")
         write_summary_metric("objective_unattributed_cost", solve_result.objective_unattributed_cost, "Objective remainder not explained by travel+omission terms.", "total_objective_value - objective_travel_cost - objective_omission_penalty.")
-        write_summary_metric("solver_status_detail", solve_result.solver_status_detail, "Detailed textual solver status.", "Status mapped from solver response.")
+        write_summary_metric("solver_status_detail", solve_result.solver_status_detail, "Raw OR-Tools routing search status.", "Name of the RoutingSearchStatus value returned by OR-Tools, untranslated.")
         write_summary_metric("solver_branches", solve_result.solver_branches, "Branching decisions explored by the solver.", "Direct branch counter from OR-Tools.")
         write_summary_metric("solver_failures", solve_result.solver_failures, "Failed nodes/backtracks during search.", "Direct failure counter from OR-Tools.")
         writer.writerow([])
@@ -536,10 +536,10 @@ def write_omitted_employees_csv(settings: Settings, solve_result: SolveResult, s
 
 def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) -> None:
     # Operational KPI policy:
-    # This file owns the semaphore status and the performance interpretation. It calculates and
-    # documents the aggregate KPIs, their threshold rules, and their GREEN/AMBER/RED classification.
-    # The summary must not repeat this block; it should focus on the executive output rather than the
-    # detailed operational control explanation.
+    # This file owns the business-oriented KPI grouping and the performance interpretation. Each KPI
+    # carries an informative target but no status classification. Balance metrics are computed over
+    # active routes only, so unused vehicles do not distort them. The summary must not repeat this
+    # block; it should focus on the executive output rather than the detailed operational control.
     ensure_output_dir(settings.output_dir)
     csv_path = os.path.join(settings.output_dir, settings.operational_kpis_csv_filename)
     routes = solve_result.solved_routes
@@ -570,11 +570,9 @@ def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) ->
     avg_time_per_served_employee_min = (total_modeled_duration / served_employees) if served_employees > 0 else 0.0
     total_uncosted_distance_km = sum(route.uncosted_distance_km for route in routes)
 
-    max_min_duration_ratio = 0.0
-    if durations:
-        min_duration = min(durations)
-        max_duration = max(durations)
-        max_min_duration_ratio = (max_duration / min_duration) if min_duration > 0 else 0.0
+    max_min_duration_ratio: float | None = None
+    if durations and min(durations) > 0:
+        max_min_duration_ratio = max(durations) / min(durations)
 
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
@@ -690,7 +688,7 @@ def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) ->
         add_kpi(
             "load_balance_and_fleet",
             "max_min_duration_ratio",
-            f"{max_min_duration_ratio:.6f}",
+            f"{max_min_duration_ratio:.6f}" if max_min_duration_ratio is not None else "None",
             "close to 1.0 preferred",
             "Max/min duration ratio across routes. A high value means uneven routing effort among vehicles.",
         )

@@ -1,7 +1,7 @@
 **SUMMARY**,,,
 status,FEASIBLE,Final solver feasibility status.,Direct value from OR-Tools solve status.
 total_objective_value,287271,Final objective value for the selected solution.,Directly read from solution.ObjectiveValue().
-search_time_ms,30021,Wall-clock search time in milliseconds.,Directly reported by solver wall time counter.
+search_time_ms,30012,Wall-clock search time in milliseconds.,Directly reported by solver wall time counter.
 total_employees,50,Total number of employees in scenario demand.,Input configuration value from settings.
 served_employees_total,50,Total employees served by all routes.,Sum of covered demand across solved routes.
 omitted_employees_total,0,Total employees not served.,Count of omitted service points in solve result.
@@ -20,12 +20,12 @@ p95_stop_wait_min,0.000,95th percentile of stop waiting minutes.,Percentile 95 o
 km_per_served_employee,11.438,Average physical km per served employee.,physical_distance_total_km / served_employees_total.
 min_per_served_employee,11.860,Average modeled route minutes per served employee.,Sum of route durations / served_employees_total.
 fleet_utilization_pct,91.67,Percent of fleet that serves at least one employee.,vehicles_used / total_vehicles * 100.
-workload_balance_demand_std,1.518406,Workload dispersion by served demand.,Population standard deviation of route demands.
-workload_balance_distance_std,18.238676,Workload dispersion by physical distance.,Population standard deviation of route physical distances.
-workload_balance_duration_std,22.313891,Workload dispersion by route duration.,Population standard deviation of modeled route durations.
+workload_balance_demand_std,0.890724,Workload dispersion by served demand.,Population standard deviation of route demands.
+workload_balance_distance_std,17.332993,Workload dispersion by physical distance.,Population standard deviation of route physical distances.
+workload_balance_duration_std,17.349113,Workload dispersion by route duration.,Population standard deviation of modeled route durations.
 max_route_duration_min,85,Maximum modeled route duration.,Maximum value among route durations.
-min_route_duration_min,0,Minimum modeled route duration.,Minimum value among route durations.
-spread_route_duration_min,85,Difference between longest and shortest route duration.,max_route_duration_min - min_route_duration_min.
+min_route_duration_min,22,Minimum modeled route duration.,Minimum value among route durations.
+spread_route_duration_min,63,Difference between longest and shortest route duration.,max_route_duration_min - min_route_duration_min.
 co2_kg_per_km,0.192000,Emission factor used for CO2 estimation.,Scenario input parameter (kg of CO2 per km).
 estimated_co2_kg,109.800,Estimated total CO2 emissions.,physical_distance_total_km * co2_kg_per_km.
 omitted_low_priority_count,0,Number of omitted low-priority employees.,Count omitted service points with LOW priority.
@@ -38,9 +38,9 @@ omitted_penalty_total,0,Total objective penalty from all omitted employees.,omit
 objective_travel_cost,286678,Objective contribution from travel arcs.,Sum of route_objective_contribution across routes.
 objective_omission_penalty,0,Objective contribution from omission penalties.,Same value as omitted_penalty_total.
 objective_unattributed_cost,593,Objective remainder not explained by travel+omission terms.,total_objective_value - objective_travel_cost - objective_omission_penalty.
-solver_status_detail,FEASIBLE,Detailed textual solver status.,Status mapped from solver response.
-solver_branches,2277,Branching decisions explored by the solver.,Direct branch counter from OR-Tools.
-solver_failures,785,Failed nodes/backtracks during search.,Direct failure counter from OR-Tools.
+solver_status_detail,ROUTING_SUCCESS,Raw OR-Tools routing search status.,"Name of the RoutingSearchStatus value returned by OR-Tools, untranslated."
+solver_branches,7582,Branching decisions explored by the solver.,Direct branch counter from OR-Tools.
+solver_failures,2619,Failed nodes/backtracks during search.,Direct failure counter from OR-Tools.
 
 **FLEET AGGREGATES BY ROUTE**,,,
 modeled_duration_min_avg,49.42,Average value of modeled route duration (minutes),Mean across all solved routes.

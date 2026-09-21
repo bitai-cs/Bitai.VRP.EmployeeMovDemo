@@ -548,7 +548,7 @@ def solve_vrp(problem: SolverInput) -> SolveResult:
     search_wall_time_ms = routing.solver().WallTime()
     solver_branches = routing.solver().Branches()
     solver_failures = routing.solver().Failures()
-    solver_status_detail = _ROUTING_STATUS_TO_SOLVE_STATUS.get(routing.status(), SolveStatus.FAILED).value
+    solver_status_detail = routing_enums_pb2.RoutingSearchStatus.Value.Name(routing.status())
 
     if not solution:
         infeasibility_hints = _build_infeasibility_hints(problem, time_window_duration)
@@ -903,9 +903,10 @@ def solve_vrp(problem: SolverInput) -> SolveResult:
         (vehicles_used / len(solved_routes)) * 100.0 if solved_routes else 0.0
     )
 
-    route_durations = [float(route.modeled_route_duration) for route in solved_routes]
-    route_demands = [float(route.covered_demand) for route in solved_routes]
-    route_distances = [route.physical_route_distance for route in solved_routes]
+    operational_routes = [route for route in solved_routes if not route.is_empty_route]
+    route_durations = [float(route.modeled_route_duration) for route in operational_routes]
+    route_demands = [float(route.covered_demand) for route in operational_routes]
+    route_distances = [route.physical_route_distance for route in operational_routes]
 
     max_route_duration_min = int(max(route_durations)) if route_durations else 0
     min_route_duration_min = int(min(route_durations)) if route_durations else 0
