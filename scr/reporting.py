@@ -12,6 +12,20 @@ from config import Settings
 from scenario import Scenario
 from solver import SolveResult
 
+# Internal reporting policy:
+# - CSV outputs must reflect operational meaning, not internal solver implementation details.
+# - Route and stop metrics must respect business semantics (for example, whether the first/last leg
+#   is counted according to UCMSME_COUNT_FIRST_LEG_COST and UCMSME_COUNT_LAST_LEG_COST), and they
+#   must not mix physical values with modeled values.
+# - solution-summary is an executive summary and should contain the key aggregates, but it must not
+#   include a second KPI_status_flags block or a level of analysis that duplicates the KPI report.
+# - operational-kpis owns the semaphore-based status classification and the explanation of service
+#   performance; if a metric has a status, its rule must live there.
+# - omitted_employees has its own dedicated CSV and must not be embedded inside the summary.
+# - Column naming must remain in English and use business language: route, stop, service,
+#   remaining_time_to_limit_min, service_time_min, etc. Internal optimizer variable names must not
+#   be exposed in end-user reports.
+
 
 def ensure_output_dir(path: str) -> None:
     Path(path).mkdir(parents=True, exist_ok=True)
@@ -211,6 +225,11 @@ def plot_vehicle_route(settings: Settings, scenario: Scenario, vehicle_id: int, 
 
 
 def write_route_details_csv(settings: Settings, solve_result: SolveResult) -> None:
+    # Route report policy:
+    # This file must be the operational view of each route. It must not mirror the solver's internal
+    # structure or include raw metrics without business translation. Any reported distance/time column
+    # must have been calculated using the active business logic (for example, whether the first/last
+    # leg is counted based on the environment configuration).
     ensure_output_dir(settings.output_dir)
     csv_path = os.path.join(settings.output_dir, settings.route_details_csv_filename)
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
@@ -294,6 +313,11 @@ def write_route_details_csv(settings: Settings, solve_result: SolveResult) -> No
 
 
 def write_stop_details_csv(settings: Settings, solve_result: SolveResult) -> None:
+    # Stop report policy:
+    # This CSV describes the route step by step from the operational execution point of view. It
+    # exposes leg distances, travel times, wait/service times, and cumulative values, but always using
+    # the same semantics as the rest of the reports: business values, not internals of the optimization
+    # model.
     ensure_output_dir(settings.output_dir)
     csv_path = os.path.join(settings.output_dir, settings.route_stop_details_csv_filename)
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
@@ -361,6 +385,10 @@ def write_stop_details_csv(settings: Settings, solve_result: SolveResult) -> Non
 
 
 def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, scenario: Scenario) -> None:
+    # Executive summary policy:
+    # This file should act as a high-level operational snapshot. It keeps the final KPIs, coverage,
+    # distance, and aggregate timing values, but it must not repeat the semaphore status section or the
+    # KPI_status_flags detail because that analysis belongs to the operational-kpis.csv file.
     ensure_output_dir(settings.output_dir)
     csv_path = os.path.join(settings.output_dir, settings.solution_summary_csv_filename)
     routes = solve_result.solved_routes
@@ -376,7 +404,7 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
 
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["field", "value"])
+        writer.writerow(["**SUMMARY**", ""])
         writer.writerow(["status", solve_result.status])
         writer.writerow(["total_objective_value", solve_result.total_objective_value])
         writer.writerow(["search_time_ms", solve_result.search_wall_time_ms])
@@ -390,7 +418,6 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
         writer.writerow(["accounted_distance_total_km", f"{solve_result.total_modeled_route_distance:.3f}"])
         writer.writerow(["physical_distance_total_km", f"{solve_result.total_physical_route_distance:.3f}"])
         writer.writerow(["deadhead_distance_km", f"{solve_result.deadhead_distance_km:.3f}"])
-        writer.writerow(["total_service_time_min", solve_result.total_modeled_route_lag])
         writer.writerow(["total_drive_min", solve_result.total_drive_min])
         writer.writerow(["total_wait_min", solve_result.total_wait_min])
         writer.writerow(["total_service_min", solve_result.total_service_min])
@@ -421,7 +448,7 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
         writer.writerow(["solver_branches", solve_result.solver_branches])
         writer.writerow(["solver_failures", solve_result.solver_failures])
         writer.writerow([])
-        writer.writerow(["fleet_aggregates_by_route"])
+        writer.writerow(["**FLEET AGGREGATES BY ROUTE**"])
         _write_aggregate_rows(writer, "modeled_duration_min", modeled_route_duration_values, decimals=2)
         _write_aggregate_rows(writer, "drive_time_min", total_drive_time_values, decimals=2)
         _write_aggregate_rows(writer, "wait_time_min", total_wait_time_values, decimals=2)
@@ -432,52 +459,7 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
         _write_aggregate_rows(writer, "total_service_stops", total_service_stops_values, decimals=2)
         _write_aggregate_rows(writer, "route_objective_contribution", route_objective_contribution_values, decimals=2)
         writer.writerow([])
-        writer.writerow(["kpi_status_flags"])
-        writer.writerow(["kpi", "value", "status", "rule"])
-        writer.writerow([
-            "service_level_pct",
-            f"{solve_result.service_level_pct:.2f}",
-            _semaphore_high_is_good(solve_result.service_level_pct, green_min=98.0, amber_min=90.0),
-            "GREEN >= 98; AMBER >= 90; RED < 90",
-        ])
-        writer.writerow([
-            "weighted_service_level_pct",
-            f"{solve_result.weighted_service_level_pct:.2f}",
-            _semaphore_high_is_good(solve_result.weighted_service_level_pct, green_min=99.0, amber_min=95.0),
-            "GREEN >= 99; AMBER >= 95; RED < 95",
-        ])
-        writer.writerow([
-            "fleet_utilization_pct",
-            f"{solve_result.fleet_utilization_pct:.2f}",
-            _semaphore_mid_band_is_good(solve_result.fleet_utilization_pct, green_min=60.0, green_max=90.0, amber_min=40.0, amber_max=100.0),
-            "GREEN in [60, 90]; AMBER in [40, 100]; RED outside [40, 100]",
-        ])
-        writer.writerow([
-            "workload_balance_duration_std",
-            f"{solve_result.workload_balance_duration_std:.3f}",
-            _semaphore_low_is_good(solve_result.workload_balance_duration_std, green_max=12.0, amber_max=25.0),
-            "GREEN <= 12 min; AMBER <= 25 min; RED > 25 min",
-        ])
-        writer.writerow([
-            "average_stop_wait_min",
-            f"{solve_result.average_stop_wait_min:.3f}",
-            _semaphore_low_is_good(solve_result.average_stop_wait_min, green_max=5.0, amber_max=15.0),
-            "GREEN <= 5 min; AMBER <= 15 min; RED > 15 min",
-        ])
-        writer.writerow([
-            "km_per_served_employee",
-            f"{solve_result.km_per_served_employee:.3f}",
-            _semaphore_low_is_good(solve_result.km_per_served_employee, green_max=20.0, amber_max=30.0),
-            "GREEN <= 20 km; AMBER <= 30 km; RED > 30 km",
-        ])
-        writer.writerow([
-            "min_per_served_employee",
-            f"{solve_result.min_per_served_employee:.3f}",
-            _semaphore_low_is_good(solve_result.min_per_served_employee, green_max=30.0, amber_max=45.0),
-            "GREEN <= 30 min; AMBER <= 45 min; RED > 45 min",
-        ])
-        writer.writerow([])
-        writer.writerow(["infeasibility_hints"])
+        writer.writerow(["**INFEASIBILITY HINTS**"])
         if solve_result.infeasibility_hints:
             writer.writerow(["hint"])
             for hint in solve_result.infeasibility_hints:
@@ -488,6 +470,10 @@ def write_solution_summary_csv(settings: Settings, solve_result: SolveResult, sc
 
 
 def write_omitted_employees_csv(settings: Settings, solve_result: SolveResult, scenario: Scenario) -> None:
+    # Omitted employees policy:
+    # The list of unserved employees must be written to a separate CSV. It must not appear nested in
+    # the summary or mixed with operational KPIs. This separation keeps the executive summary clean and
+    # preserves the exclusion detail with its own spatial and priority context.
     ensure_output_dir(settings.output_dir)
     csv_path = os.path.join(settings.output_dir, settings.omitted_employees_csv_filename)
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
@@ -507,6 +493,11 @@ def write_omitted_employees_csv(settings: Settings, solve_result: SolveResult, s
 
 
 def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) -> None:
+    # Operational KPI policy:
+    # This file owns the semaphore status and the performance interpretation. It calculates and
+    # documents the aggregate KPIs, their threshold rules, and their GREEN/AMBER/RED classification.
+    # The summary must not repeat this block; it should focus on the executive output rather than the
+    # detailed operational control explanation.
     ensure_output_dir(settings.output_dir)
     csv_path = os.path.join(settings.output_dir, settings.operational_kpis_csv_filename)
     routes = solve_result.solved_routes
@@ -640,10 +631,68 @@ def write_operational_kpis_csv(settings: Settings, solve_result: SolveResult) ->
             f"{service_level_pct:.2f}",
             f"(employees_served / (employees_served + employees_omitted)) * 100 = ({served_employees} / {total_employees}) * 100 = {service_level_pct:.2f}%. Interpretacion: alto = mejor calidad de servicio; bajo = cobertura insuficiente.",
         ])
+
+        writer.writerow([])
+        writer.writerow(["kpi_status_flags"])
+        writer.writerow(["kpi", "value", "status", "rule", "description"])
+        writer.writerow([
+            "service_level_pct",
+            f"{service_level_pct:.2f}",
+            _semaphore_high_is_good(service_level_pct, green_min=98.0, amber_min=90.0),
+            "GREEN >= 98; AMBER >= 90; RED < 90",
+            "Cobertura efectiva del servicio, expresada como % de empleados atendidos.",
+        ])
+        writer.writerow([
+            "weighted_service_level_pct",
+            f"{solve_result.weighted_service_level_pct:.2f}",
+            _semaphore_high_is_good(solve_result.weighted_service_level_pct, green_min=99.0, amber_min=95.0),
+            "GREEN >= 99; AMBER >= 95; RED < 95",
+            "Cobertura ponderada por prioridad del empleado atendido.",
+        ])
+        writer.writerow([
+            "fleet_utilization_pct",
+            f"{fleet_utilization_pct:.2f}",
+            _semaphore_mid_band_is_good(fleet_utilization_pct, green_min=60.0, green_max=90.0, amber_min=40.0, amber_max=100.0),
+            "GREEN in [60, 90]; AMBER in [40, 100]; RED outside [40, 100]",
+            "Porcentaje de vehículos activos respecto al total disponible.",
+        ])
+        writer.writerow([
+            "workload_balance_duration_std",
+            f"{solve_result.workload_balance_duration_std:.3f}",
+            _semaphore_low_is_good(solve_result.workload_balance_duration_std, green_max=12.0, amber_max=25.0),
+            "GREEN <= 12 min; AMBER <= 25 min; RED > 25 min",
+            "Desviación estándar de la duración entre rutas para evaluar equilibrio de carga.",
+        ])
+        writer.writerow([
+            "average_stop_wait_min",
+            f"{solve_result.average_stop_wait_min:.3f}",
+            _semaphore_low_is_good(solve_result.average_stop_wait_min, green_max=5.0, amber_max=15.0),
+            "GREEN <= 5 min; AMBER <= 15 min; RED > 15 min",
+            "Tiempo promedio de espera en las paradas dentro de la ruta.",
+        ])
+        writer.writerow([
+            "km_per_served_employee",
+            f"{solve_result.km_per_served_employee:.3f}",
+            _semaphore_low_is_good(solve_result.km_per_served_employee, green_max=20.0, amber_max=30.0),
+            "GREEN <= 20 km; AMBER <= 30 km; RED > 30 km",
+            "Distancia física media por empleado atendido.",
+        ])
+        writer.writerow([
+            "min_per_served_employee",
+            f"{solve_result.min_per_served_employee:.3f}",
+            _semaphore_low_is_good(solve_result.min_per_served_employee, green_max=30.0, amber_max=45.0),
+            "GREEN <= 30 min; AMBER <= 45 min; RED > 45 min",
+            "Tiempo medio por empleado atendido.",
+        ])
     print(f"KPIs operativos guardados en: {csv_path}")
 
 
 def write_all_outputs(settings: Settings, scenario: Scenario, solve_result: SolveResult) -> None:
+    # Output-set policy:
+    # Helper artifacts such as plots are written first, then the detailed reports, and finally the
+    # business CSV files: route details, stop details, omitted employees, solution summary, and
+    # operational KPIs. Each file has a clear responsibility and does not duplicate the same data in a
+    # different format or with the same semantics in multiple places.
     if settings.plot_scenario:
         plot_scenario(settings, scenario)
     if settings.plot_all_routes:
