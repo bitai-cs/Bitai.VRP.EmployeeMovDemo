@@ -102,10 +102,6 @@ class SolvedRoute:
 
 @dataclass
 class SolveResult:
-    manager: Any
-    routing: Any
-    time_dimension: Any
-    solution: Any
     status: SolveStatus
     omitted_service_points: list[int]
     solved_routes: list[SolvedRoute]
@@ -553,10 +549,6 @@ def solve_vrp(problem: SolverInput) -> SolveResult:
     if not solution:
         infeasibility_hints = _build_infeasibility_hints(problem, time_window_duration)
         return SolveResult(
-            manager=manager,
-            routing=routing,
-            time_dimension=time_dimension,
-            solution=solution,
             status=status,
             omitted_service_points=[],
             solved_routes=[],
@@ -925,10 +917,6 @@ def solve_vrp(problem: SolverInput) -> SolveResult:
     estimated_co2_kg = total_route_physical_distance * problem.co2_kg_per_km
 
     return SolveResult(
-        manager=manager,
-        routing=routing,
-        time_dimension=time_dimension,
-        solution=solution,
         status=status,
         omitted_service_points=omitted_service_points,
         solved_routes=solved_routes,
